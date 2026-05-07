@@ -1,26 +1,50 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-green: #1fa85c;
+  --brand-green-dark: #178a4a;
+  --brand-green-50: #e8f7ee;
+  --brand-red: #e63946;
+  --brand-red-50: #fcebec;
+  --surface: #ffffff;
+  --surface-muted: #f4f6f8;
+  --border: #e5e7eb;
+  --text-primary: #1a1a1a;
+  --text-secondary: #5f6b7a;
+  --risk-low: #1fa85c;
+  --risk-moderate: #f2a623;
+  --risk-high: #e63946;
+
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+
+  --color-primary: var(--brand-green);
+  --color-primary-dark: var(--brand-green-dark);
+  --color-primary-50: var(--brand-green-50);
+  --color-danger: var(--brand-red);
+  --color-danger-50: var(--brand-red-50);
+  --color-surface: var(--surface);
+  --color-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-foreground: var(--text-primary);
+  --color-muted-foreground: var(--text-secondary);
+  --color-risk-low: var(--risk-low);
+  --color-risk-moderate: var(--risk-moderate);
+  --color-risk-high: var(--risk-high);
+
+  --radius-card: 20px;
+  --radius-input: 14px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }

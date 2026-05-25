@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronRight, Plus } from "lucide-react";
 
 import { useAuthStore } from "@/stores/auth";
@@ -13,9 +14,9 @@ import {
 } from "@/lib/mock";
 import { Card, CardContent } from "@/components/ui/card";
 import { RiskBadge } from "@/components/risk-badge";
-import { cn } from "@/lib/utils";
+import { cn, patientId } from "@/lib/utils";
 
-function initials(name: string) {
+function staffInitials(name: string) {
   return name
     .split(" ")
     .slice(0, 2)
@@ -73,14 +74,21 @@ export default function DashboardPage() {
   const weekCount = weekRecords.length;
   const highRiskCount = weekRecords.filter((r) => r.riskLevel === "high").length;
   const recent = MOCK_RECORDS.slice(0, 5);
-  const userInitials = initials(user?.name ?? "Staff User");
+  const userInitials = staffInitials(user?.name ?? "Staff User");
 
   return (
     <div className="flex flex-col max-w-lg mx-auto bg-surface min-h-full">
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-4 pt-10 pb-3">
-        <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-sm">S</span>
+        <div className="relative h-10 w-10 shrink-0">
+          <Image
+            src="/logos/SukaaliCheck.png"
+            alt="SukaaliCheck"
+            fill
+            sizes="40px"
+            className="object-contain"
+            priority
+          />
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-bold text-base text-foreground leading-tight truncate">
@@ -168,12 +176,12 @@ export default function DashboardPage() {
                   href={`/predict/result/${record.id}`}
                   className="flex items-center gap-3 px-4 py-3 active:bg-muted transition-colors min-h-[56px]"
                 >
-                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs shrink-0">
-                    {initials(record.patientName)}
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs shrink-0 font-mono">
+                    {patientId(record.id).slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {record.patientName}
+                    <p className="text-sm font-semibold text-foreground truncate font-mono tracking-wider">
+                      {patientId(record.id)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {record.age} · {record.sex} · {formatRow(record.createdAt)}

@@ -15,19 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RiskBadge } from "@/components/risk-badge";
-import { cn } from "@/lib/utils";
+import { cn, patientId } from "@/lib/utils";
 
 type RiskFilter = "all" | RiskLevel;
 type DateFilter = "all" | "today" | "week";
-
-function initials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
-}
 
 function formatRow(iso: string) {
   const d = new Date(iso);
@@ -60,8 +51,8 @@ export default function RecordsPage() {
       records = records.filter((r) => r.riskLevel === riskFilter);
 
     if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      records = records.filter((r) => r.patientName.toLowerCase().includes(q));
+      const q = search.trim().toUpperCase();
+      records = records.filter((r) => patientId(r.id).includes(q));
     }
 
     return records;
@@ -95,7 +86,7 @@ export default function RecordsPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search by patient name or ID"
+            placeholder="Search by patient ID"
             className="pl-9 bg-surface"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -108,7 +99,7 @@ export default function RecordsPage() {
             [
               { label: "All", value: "all" },
               { label: "High", value: "high" },
-              { label: "Moderate", value: "moderate" },
+              { label: "Intermediate", value: "intermediate" },
               { label: "Low", value: "low" },
             ] as { label: string; value: RiskFilter }[]
           ).map(({ label, value }) => (
@@ -172,12 +163,12 @@ export default function RecordsPage() {
                   href={`/predict/result/${record.id}`}
                   className="flex items-center gap-3 px-4 py-3 active:bg-muted transition-colors min-h-[60px]"
                 >
-                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs shrink-0">
-                    {initials(record.patientName)}
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs shrink-0 font-mono">
+                    {patientId(record.id).slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {record.patientName}
+                    <p className="text-sm font-semibold text-foreground truncate font-mono tracking-wider">
+                      {patientId(record.id)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {record.age} · {record.sex} · {formatRow(record.createdAt)}

@@ -13,7 +13,7 @@ const badgeVariants = cva(
         destructive: "bg-danger-50 text-danger",
         outline: "border border-border text-foreground",
         "risk-low": "bg-risk-low/10 text-risk-low",
-        "risk-moderate": "bg-risk-moderate/10 text-risk-moderate",
+        "risk-intermediate": "bg-risk-intermediate/10 text-risk-intermediate",
         "risk-high": "bg-risk-high/10 text-risk-high",
       },
     },

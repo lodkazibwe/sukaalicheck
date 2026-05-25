@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -55,12 +56,19 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col bg-surface px-5">
       {/* Branding */}
       <div className="pt-14 pb-8 flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-xl">S</span>
+        <div className="relative h-12 w-12 shrink-0">
+          <Image
+            src="/logos/SukaaliCheck.png"
+            alt="SukaaliCheck"
+            fill
+            sizes="48px"
+            className="object-contain"
+            priority
+          />
         </div>
         <div>
           <p className="font-bold text-lg text-foreground leading-tight">SukaaliCheck</p>
-          <p className="text-sm text-muted-foreground">Diabetes risk screening</p>
+          <p className="text-sm text-muted-foreground">Diabetes type 2 risk predictor</p>
         </div>
       </div>
 
@@ -138,10 +146,10 @@ export default function LoginPage() {
       <div className="py-8 border-t border-border text-center">
         <p className="text-sm text-muted-foreground">Need an account?</p>
         <a
-          href="mailto:sukaalicheck@example.com"
+          href="mailto:sukaalicheckug@gmail.com"
           className="text-sm text-primary font-medium"
         >
-          Contact us at sukaalicheck@example.com
+          Contact us at sukaalicheckug@gmail.com
         </a>
       </div>
     </div>

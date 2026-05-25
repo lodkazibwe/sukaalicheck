@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
-import { ChevronRight } from "lucide-react";
+import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,10 +40,10 @@ const FACTS = [
 // ── Partner orgs ──────────────────────────────────────────────────────────────
 
 const PARTNERS = [
-  { abbr: "PEL", name: "Pathogen Economy Labs" },
-  { abbr: "ML",  name: "MARCONI Labs" },
-  { abbr: "MAK", name: "Makerere University" },
-  { abbr: "STI", name: "STI Secretariat" },
+  { name: "Pathogen Economy Labs", logo: "/logos/Pathogen_economy.jpeg" },
+  { name: "MARCONI Labs",          logo: "/logos/marconi_labs.png" },
+  { name: "Makerere University",   logo: "/logos/Makerere_University.jpeg" },
+  { name: "STI Secretariat",       logo: "/logos/STI.jpeg" },
 ];
 
 // ── Rotating facts card ───────────────────────────────────────────────────────
@@ -95,8 +94,15 @@ export default function LandingPage() {
 
       {/* ── Nav bar ── */}
       <div className="flex items-center gap-3 px-4 pt-10 pb-6">
-        <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center shrink-0">
-          <span className="text-white font-bold text-base">S</span>
+        <div className="relative h-10 w-10 shrink-0">
+          <Image
+            src="/logos/SukaaliCheck.png"
+            alt="SukaaliCheck"
+            fill
+            sizes="40px"
+            className="object-contain"
+            priority
+          />
         </div>
         <span className="font-bold text-lg text-foreground">SukaaliCheck</span>
       </div>
@@ -104,10 +110,10 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <div className="px-4 pb-8 flex flex-col gap-4">
         <p className="text-xs font-bold uppercase tracking-widest text-primary">
-          For clinics &amp; herbal facilities · Uganda
+          For Medical &amp; herbal facilities · Uganda
         </p>
         <h1 className="text-3xl font-extrabold text-foreground leading-tight">
-          AI-assisted diabetes screening, in minutes.
+         AI-assisted diabetes type 2 predictor, in minutes
         </h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
           Enter a patient&apos;s vitals, get an instant risk estimate, and generate a
@@ -115,12 +121,8 @@ export default function LandingPage() {
         </p>
 
         <div className="flex flex-col gap-3 mt-2">
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={() => toast.info("Sign up coming soon — contact us to register your facility")}
-          >
-            Sign up your facility
+          <Button size="lg" className="w-full" asChild>
+            <Link href="/signup">Sign up your facility</Link>
           </Button>
           <Button size="lg" variant="outline" className="w-full" asChild>
             <Link href="/login">Log in</Link>
@@ -140,7 +142,7 @@ export default function LandingPage() {
           {
             n: 2,
             title: "Get an instant risk estimate",
-            body: "Our model returns a low / moderate / high score with explainable factors.",
+            body: "Our model returns a low / intermediate / high score with explainable factors.",
           },
           {
             n: 3,
@@ -173,19 +175,21 @@ export default function LandingPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          {PARTNERS.map(({ abbr, name }) => (
-            <Card key={abbr} className="flex items-center gap-3 p-3">
-              <div className="h-10 w-10 rounded-input bg-muted flex items-center justify-center shrink-0">
-                <span className="text-[10px] font-bold text-muted-foreground">{abbr}</span>
+          {PARTNERS.map(({ name, logo }) => (
+            <Card key={name} className="flex items-center gap-3 p-3">
+              <div className="relative h-10 w-10 shrink-0">
+                <Image
+                  src={logo}
+                  alt={name}
+                  fill
+                  sizes="40px"
+                  className="object-contain"
+                />
               </div>
               <span className="text-sm font-medium text-foreground leading-snug">{name}</span>
             </Card>
           ))}
         </div>
-
-        <p className="text-xs text-muted-foreground italic">
-          Logo placeholders — replace with partner marks when available.
-        </p>
       </div>
 
       {/* ── Contact us ── */}
@@ -215,12 +219,8 @@ export default function LandingPage() {
 
       {/* ── Footer CTA + copyright ── */}
       <div className="px-4 pb-10 flex flex-col gap-4 mt-2">
-        <Button
-          size="lg"
-          className="w-full"
-          onClick={() => toast.info("Sign up coming soon — contact us to register your facility")}
-        >
-          Sign up your facility
+        <Button size="lg" className="w-full" asChild>
+          <Link href="/signup">Sign up your facility</Link>
         </Button>
         <div className="text-center">
           <p className="text-xs text-muted-foreground">© 2026 SukaaliCheck</p>

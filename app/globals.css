@@ -12,7 +12,7 @@
   --text-primary: #1a1a1a;
   --text-secondary: #5f6b7a;
   --risk-low: #1fa85c;
-  --risk-moderate: #f2a623;
+  --risk-intermediate: #f2a623;
   --risk-high: #e63946;
 
 }
@@ -31,7 +31,7 @@
   --color-foreground: var(--text-primary);
   --color-muted-foreground: var(--text-secondary);
   --color-risk-low: var(--risk-low);
-  --color-risk-moderate: var(--risk-moderate);
+  --color-risk-intermediate: var(--risk-intermediate);
   --color-risk-high: var(--risk-high);
 
   --radius-card: 20px;

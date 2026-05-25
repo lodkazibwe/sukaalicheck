@@ -44,7 +44,7 @@ function scoreInput(data: PredictionInput): {
   if (data.physicalActivity === "low") {
     score += 10;
     factors.push("Low physical activity");
-  } else if (data.physicalActivity === "moderate") {
+  } else if (data.physicalActivity === "intermediate") {
     score += 3;
   }
 
@@ -68,7 +68,7 @@ function scoreInput(data: PredictionInput): {
 
 function levelFromScore(score: number): RiskLevel {
   if (score >= 60) return "high";
-  if (score >= 35) return "moderate";
+  if (score >= 35) return "intermediate";
   return "low";
 }
 

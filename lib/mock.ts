@@ -1,4 +1,4 @@
-export type RiskLevel = "low" | "moderate" | "high";
+export type RiskLevel = "low" | "intermediate" | "high";
 
 export interface Staff {
   id: string;
@@ -60,7 +60,7 @@ export const MOCK_RECORDS: PredictionRecord[] = [
     patientName: "Namuli Beatrice",
     age: 47,
     sex: "Female",
-    riskLevel: "moderate",
+    riskLevel: "intermediate",
     riskScore: 48,
     createdAt: "2026-05-07T09:15:00Z",
     staffId: "staff-001",
@@ -93,7 +93,7 @@ export const MOCK_RECORDS: PredictionRecord[] = [
     patientName: "Ssali Ibrahim",
     age: 52,
     sex: "Male",
-    riskLevel: "moderate",
+    riskLevel: "intermediate",
     riskScore: 55,
     createdAt: "2026-05-06T11:21:00Z",
     staffId: "staff-001",

@@ -16,25 +16,25 @@ import {
 import { MOCK_RECORDS, type PredictionRecord, type RiskLevel } from "@/lib/mock";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, patientId } from "@/lib/utils";
 
 // ── risk helpers ──────────────────────────────────────────────────────────────
 
 function riskCss(level: RiskLevel) {
   if (level === "high") return "var(--risk-high)";
-  if (level === "moderate") return "var(--risk-moderate)";
+  if (level === "intermediate") return "var(--risk-intermediate)";
   return "var(--risk-low)";
 }
 
 function riskLabel(level: RiskLevel) {
   if (level === "high") return "High risk";
-  if (level === "moderate") return "Moderate risk";
+  if (level === "intermediate") return "Intermediate risk";
   return "Low risk";
 }
 
 function riskTextClass(level: RiskLevel) {
   if (level === "high") return "text-danger";
-  if (level === "moderate") return "text-risk-moderate";
+  if (level === "intermediate") return "text-risk-intermediate";
   return "text-risk-low";
 }
 
@@ -46,11 +46,6 @@ function formatDate(iso: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function patientRef(id: string) {
-  const digits = id.replace(/\D/g, "").slice(-4).padStart(4, "0");
-  return `#p_${digits}`;
 }
 
 // ── health advice per risk level ──────────────────────────────────────────────
@@ -65,11 +60,11 @@ const ADVICE: Record<RiskLevel, { heading: string; tips: string[] }> = {
       "Schedule routine medical check-ups at least once a year.",
     ],
   },
-  moderate: {
+  intermediate: {
     heading: "Lifestyle improvements recommended",
     tips: [
       "Reduce intake of sugary foods, white rice, and processed carbohydrates.",
-      "Aim for 150+ minutes of moderate physical activity per week.",
+      "Aim for 150+ minutes of intermediate physical activity per week.",
       "Monitor your weight and blood pressure regularly.",
       "Consider a fasting blood glucose test at your next clinic visit.",
       "Schedule a follow-up check-up within the next 3–6 months.",
@@ -128,7 +123,7 @@ export function ResultClient({ id }: { id: string }) {
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold text-foreground">Screening result</h1>
-          <p className="text-sm text-muted-foreground">Patient {patientRef(id)}</p>
+          <p className="text-sm text-muted-foreground font-mono tracking-wider">ID: {patientId(id)}</p>
         </div>
         <button
           type="button"
@@ -244,6 +239,7 @@ export function ResultClient({ id }: { id: string }) {
             <CardContent className="pt-0 pb-4 border-t border-border flex flex-col gap-0">
               {(
                 [
+                  ["Patient ID", patientId(id)],
                   ["Age", `${record.age} years`],
                   ["Sex", record.sex],
                   ["Risk score", `${record.riskScore}%`],
@@ -255,7 +251,7 @@ export function ResultClient({ id }: { id: string }) {
                   className="flex justify-between text-sm py-2.5 border-b border-border last:border-0"
                 >
                   <span className="text-muted-foreground">{label}</span>
-                  <span className="font-medium text-foreground">{value}</span>
+                  <span className={cn("font-medium text-foreground", label === "Patient ID" && "font-mono tracking-wider")}>{value}</span>
                 </div>
               ))}
             </CardContent>

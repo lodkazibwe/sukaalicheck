@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "SukaaliCheck",
-  description: "AI-assisted diabetes risk screening",
+  description: "AI-assisted Diabetes type 2 risk predictor",
 };
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
 # SukaaliCheck — Frontend
 
-AI-assisted diabetes risk screening for clinics and herbal facilities in Uganda.
+AI-assisted Diabetes type 2 risk predictor for clinics and herbal facilities in Uganda.
 
 See [CLAUDE.md](./CLAUDE.md) for architecture, brand tokens, mobile-first rules, and the v2 TODO list.
 

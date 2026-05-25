@@ -268,7 +268,7 @@ export default function PredictPage() {
   const weight = form.watch("weight");
   const height = form.watch("height");
   const computedBmi = useMemo(() => {
-    if (weight && height && height >= 100) {
+    if (weight && height && height > 0) {
       const b = bmi(weight, height);
       return { value: b.toFixed(1), category: bmiCategory(b) };
     }
@@ -538,7 +538,7 @@ export default function PredictPage() {
                         <SegmentedControl
                           options={[
                             { label: "Low", value: "low" },
-                            { label: "Moderate", value: "moderate" },
+                            { label: "Intermediate", value: "intermediate" },
                             { label: "High", value: "high" },
                           ]}
                           value={field.value}
@@ -586,8 +586,8 @@ export default function PredictPage() {
           {step === 5 && (
             <>
               <StepTitle
-                title="Blood test"
-                subtitle="Use the most recent fasting glucose reading."
+                title="Blood glucose test"
+                subtitle="Use the most recent random glucose reading."
               />
               <FieldCard>
                 <FormField
@@ -595,12 +595,12 @@ export default function PredictPage() {
                   name="bloodGlucose"
                   render={({ field }) => (
                     <FormItem>
-                      <FieldLabel>Blood glucose (mg/dL)</FieldLabel>
+                      <FieldLabel>Random blood glucose (mg/dL)</FieldLabel>
                       <FormControl>
                         <Input
                           type="number"
                           inputMode="decimal"
-                          placeholder="e.g. 95"
+                          placeholder="e.g. 140"
                           {...field}
                           onChange={(e) =>
                             field.onChange(
@@ -618,12 +618,11 @@ export default function PredictPage() {
                 {/* Reference ranges */}
                 <div className="rounded-input bg-muted px-4 py-3 flex flex-col gap-1.5">
                   <p className="text-xs font-bold text-foreground">
-                    Reference ranges (fasting)
+                    Reference ranges (random)
                   </p>
                   {[
-                    ["< 100 mg/dL", "Normal"],
-                    ["100–125 mg/dL", "Prediabetes"],
-                    ["≥ 126 mg/dL", "Diabetes range"],
+                    ["≤ 200 mg/dL", "Normal"],
+                    ["> 200 mg/dL", "Possible diabetes — confirm with fasting test"],
                   ].map(([range, label]) => (
                     <p key={range} className="text-xs text-muted-foreground">
                       {range} — {label}

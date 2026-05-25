@@ -8,16 +8,16 @@ interface RiskBadgeProps {
 
 const labels: Record<RiskLevel, string> = {
   low: "Low risk",
-  moderate: "Moderate risk",
+  intermediate: "Intermediate risk",
   high: "High risk",
 };
 
 const variants: Record<
   RiskLevel,
-  "risk-low" | "risk-moderate" | "risk-high"
+  "risk-low" | "risk-intermediate" | "risk-high"
 > = {
   low: "risk-low",
-  moderate: "risk-moderate",
+  intermediate: "risk-intermediate",
   high: "risk-high",
 };
 

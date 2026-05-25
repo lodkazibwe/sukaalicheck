@@ -1,7 +1,7 @@
 # CLAUDE.md
 # SukaaliCheck — Frontend
 
-AI-assisted diabetes risk screening tool for clinics and herbal facilities in Uganda. Staff sign in, enter a patient's data, get a risk prediction, generate a PDF report, and save the record. The backend is a separate Spring Boot service; this repo is the Next.js frontend that will also be wrapped as a mobile app later.
+AI-assisted Diabetes type 2 risk predictor tool for clinics and herbal facilities in Uganda. Staff sign in, enter a patient's data, get a risk prediction, generate a PDF report, and save the record. The backend is a separate Spring Boot service; this repo is the Next.js frontend that will also be wrapped as a mobile app later.
 
 @AGENTS.md
 
@@ -69,7 +69,7 @@ Defined as CSS variables in `app/globals.css` and wired into Tailwind v4's theme
 --text-primary: #1A1A1A;
 --text-secondary: #5F6B7A;
 --risk-low: #1FA85C;
---risk-moderate: #F2A623;
+--risk-intermediate: #F2A623;
 --risk-high: #E63946;
 ```
 
@@ -154,7 +154,7 @@ returns: { token, facility: { id, name, plan, subscriptionStatus, expiresAt } }
 POST /api/predict
 body: { age, sex, weightKg, heightCm, familyHistory, hypertension,
 activityLevel, dietScore, glucoseMgDl }
-returns: { predictionId, riskLevel: 'low'|'moderate'|'high', riskScore: 0-100 }
+returns: { predictionId, riskLevel: 'low'|'intermediate'|'high', riskScore: 0-100 }
 GET /api/records?search=&risk=&range=
 returns: { records: [...], total }
 GET /api/stats/today
@@ -162,7 +162,7 @@ returns: { predictionsToday, predictionsThisWeek, highRiskThisWeek }
 
 **Mock prediction logic (deterministic, glucose-driven):**
 - glucose ≥ 126 → high
-- glucose 100–125 → moderate
+- glucose 100–125 → intermediate
 - glucose < 100 → low
 
 This is a placeholder so the UI can be wired before the real model exists. Do not pretend it's accurate.
@@ -183,7 +183,7 @@ The prediction form must include exactly these fields, in this order, with these
 | Body measurements | BMI | read-only | auto: weight / (height/100)² |
 | Medical history | Family history of diabetes | select | Yes / No |
 | Medical history | Hypertension | select | Yes / No |
-| Lifestyle | Physical activity level | select | Low / Moderate / High |
+| Lifestyle | Physical activity level | select | Low / Intermediate / High |
 | Lifestyle | Diet quality score | slider | 0–10, default 5 |
 | Blood test | Blood glucose (mg/dL) | number | 40–500, 1 decimal |
 

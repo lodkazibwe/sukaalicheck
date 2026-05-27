@@ -64,19 +64,12 @@ export const OWNERSHIPS = [
 export const DISTRICTS = [
   "Kampala",
   "Wakiso",
-  "Mukono",
-  "Jinja",
-  "Mbarara",
-  "Gulu",
-  "Mbale",
-  "Masaka",
-  "Soroti",
-  "Lira",
-  "Hoima",
-  "Arua",
-  "Kabale",
-  "Fort Portal",
-  "Entebbe",
+  "Mukono", 
+  "Mpigi",
+   "Masaka",
+  "Luweero", 
+  "Butambala",
+  "Other",
 ] as const;
 
 export const SPECIALIST_TITLES = [
@@ -87,6 +80,30 @@ export const SPECIALIST_TITLES = [
   { value: "herbalist", label: "Herbal practitioner" },
   { value: "pharmacist", label: "Pharmacist" },
   { value: "other", label: "Other" },
+] as const;
+
+export const PLANS = [
+  {
+    value: "monthly" as const,
+    label: "Monthly",
+    description: "Full access for 30 days",
+    amount: 70_000,
+    period: "/ month",
+  },
+  {
+    value: "annual" as const,
+    label: "Annual",
+    description: "Best value · Full access for 12 months",
+    amount: 750_000,
+    period: "/ year",
+  },
+  {
+    value: "camp" as const,
+    label: "Camp week",
+    description: "5 consecutive days — ideal for outreach camps",
+    amount: 100_000,
+    period: "/ 5 days",
+  },
 ] as const;
 
 const phoneRegex = /^\+?\d[\d\s-]{7,18}$/;
@@ -122,10 +139,20 @@ export const signupSchema = z.object({
     "Select a title"
   ),
   licenceNumber: z.string().min(2, "Enter the licence number"),
-  specialistEmail: z.email("Enter a valid email"),
+  specialistPhone: z.string().regex(phoneRegex, "Enter a valid phone number"),
 
   // Step 3 — Payment
+  plan: z.enum(["monthly", "annual", "camp"] as const, "Select a plan"),
+  campStartDate: z.string().optional(),
   momoNumber: z.string().regex(phoneRegex, "Enter a valid MoMo number"),
+}).superRefine((data, ctx) => {
+  if (data.plan === "camp" && !data.campStartDate) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Select a start date for the camp week",
+      path: ["campStartDate"],
+    });
+  }
 });
 
 export type SignupInput = z.infer<typeof signupSchema>;

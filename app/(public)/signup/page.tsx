@@ -14,6 +14,7 @@ import {
   OWNERSHIPS,
   DISTRICTS,
   SPECIALIST_TITLES,
+  PLANS,
 } from "@/lib/schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,19 +50,18 @@ const STEP_META = [
     ] as const,
   },
   {
-    label: "Specialist",
+    label: "Supervisor",
     fields: [
       "specialistName",
       "specialistTitle",
       "licenceNumber",
-      "specialistEmail",
+      "specialistPhone",
     ] as const,
   },
-  { label: "Payment", fields: ["momoNumber"] as const },
+  { label: "Payment", fields: ["plan", "campStartDate", "momoNumber"] as const },
 ] as const;
 
 const TOTAL = STEP_META.length;
-const ACTIVATION_AMOUNT = 50000;
 
 function fmtUgx(n: number) {
   return `UGX ${n.toLocaleString("en-UG")}`;
@@ -69,6 +69,15 @@ function fmtUgx(n: number) {
 
 function generateReference() {
   return `SK-${Math.floor(100000 + Math.random() * 900000)}`;
+}
+
+function campDateRange(startIso: string): string {
+  const [y, m, d] = startIso.split("-").map(Number);
+  const start = new Date(y, m - 1, d);
+  const end = new Date(y, m - 1, d + 4);
+  const fmt = (dt: Date) =>
+    dt.toLocaleDateString("en-UG", { weekday: "short", day: "numeric", month: "short" });
+  return `${fmt(start)} – ${fmt(end)} ${end.getFullYear()}`;
 }
 
 // ─── Shared primitives ───────────────────────────────────────────────────────
@@ -228,6 +237,9 @@ interface SuccessData {
   facilityEmail: string;
   reference: string;
   momoNumber: string;
+  planLabel: string;
+  amount: number;
+  campDates?: string;
 }
 
 // ─── Main page ───────────────────────────────────────────────────────────────
@@ -241,6 +253,10 @@ export default function SignupPage() {
   const form = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
   });
+
+  const watchedPlan = form.watch("plan");
+  const watchedCampDate = form.watch("campStartDate");
+  const selectedPlanData = PLANS.find((p) => p.value === watchedPlan);
 
   async function advance() {
     const fields = [...STEP_META[step - 1].fields] as string[];
@@ -269,11 +285,18 @@ export default function SignupPage() {
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 1200));
     const data = form.getValues();
+    const plan = PLANS.find((p) => p.value === data.plan)!;
     setSuccess({
       facilityName: data.facilityName,
       facilityEmail: data.facilityEmail,
       reference: generateReference(),
       momoNumber: data.momoNumber,
+      planLabel: plan.label,
+      amount: plan.amount,
+      campDates:
+        data.plan === "camp" && data.campStartDate
+          ? campDateRange(data.campStartDate)
+          : undefined,
     });
     setSubmitting(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -281,6 +304,14 @@ export default function SignupPage() {
 
   // ── Success view ──────────────────────────────────────────────────────────
   if (success) {
+    const summaryRows: [string, string][] = [
+      ["Plan", success.planLabel],
+      ...(success.campDates ? ([["Camp dates", success.campDates]] as [string, string][]) : []),
+      ["Reference", success.reference],
+      ["Amount paid", fmtUgx(success.amount)],
+      ["Method", `MTN MoMo · ${success.momoNumber}`],
+    ];
+
     return (
       <div className="flex flex-col max-w-lg mx-auto min-h-screen bg-surface px-6">
         <div className="flex-1 flex flex-col items-center justify-center gap-5 pt-16 pb-6">
@@ -299,13 +330,7 @@ export default function SignupPage() {
           </p>
 
           <div className="rounded-card border border-border bg-surface p-4 w-full mt-2 flex flex-col gap-2.5">
-            {(
-              [
-                ["Reference", success.reference],
-                ["Amount paid", fmtUgx(ACTIVATION_AMOUNT)],
-                ["Method", `MTN MoMo · ${success.momoNumber}`],
-              ] as [string, string][]
-            ).map(([label, value]) => (
+            {summaryRows.map(([label, value]) => (
               <div key={label} className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{label}</span>
                 <span className="font-semibold text-foreground">{value}</span>
@@ -445,7 +470,7 @@ export default function SignupPage() {
                   name="physicalAddress"
                   render={({ field }) => (
                     <FormItem>
-                      <FieldLabel>Physical address</FieldLabel>
+                      <FieldLabel>Physical Address/Village</FieldLabel>
                       <FormControl>
                         <Input
                           placeholder="e.g. Plot 12, Mulago Hill Road"
@@ -505,7 +530,7 @@ export default function SignupPage() {
           {step === 2 && (
             <>
               <StepTitle
-                title="Lead specialist"
+                title="Supervisor"
                 subtitle="The lead specialist on record for clinical sign-off."
               />
               <FieldCard>
@@ -575,15 +600,15 @@ export default function SignupPage() {
 
                 <FormField
                   control={form.control}
-                  name="specialistEmail"
+                  name="specialistPhone"
                   render={({ field }) => (
                     <FormItem>
-                      <FieldLabel>Email</FieldLabel>
+                      <FieldLabel>Phone number</FieldLabel>
                       <FormControl>
                         <Input
-                          type="email"
-                          inputMode="email"
-                          placeholder="specialist@example.com"
+                          type="tel"
+                          inputMode="tel"
+                          placeholder="+256 7xx xxx xxx"
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -600,54 +625,116 @@ export default function SignupPage() {
           {step === 3 && (
             <>
               <StepTitle
-                title="Activate your account"
-                subtitle="A one-time activation fee covers your first year of SukaaliCheck."
+                title="Choose a plan"
+                subtitle="Select the package that works for your facility."
               />
 
-              {/* Pricing card */}
-              <div
-                className="mx-4 mb-3 rounded-card border border-border bg-surface overflow-hidden"
-                style={{ borderTop: "4px solid var(--brand-green)" }}
-              >
-                <div className="p-4 flex flex-col gap-1">
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-                    Activation
-                  </p>
-                  <p className="text-3xl font-extrabold text-foreground leading-tight">
-                    {fmtUgx(ACTIVATION_AMOUNT)}
-                    <span className="text-base font-normal text-muted-foreground">
-                      {" "}
-                      / year
-                    </span>
-                  </p>
-                  <p className="text-sm text-muted-foreground leading-relaxed mt-1">
-                    Unlimited screenings · PDF reports · Patient records · Email
-                    support
-                  </p>
+              {/* Plan selection */}
+              <FormField
+                control={form.control}
+                name="plan"
+                render={({ field }) => (
+                  <FormItem className="mx-4">
+                    <div className="flex flex-col gap-3">
+                      {PLANS.map((p) => {
+                        const selected = field.value === p.value;
+                        return (
+                          <button
+                            key={p.value}
+                            type="button"
+                            onClick={() => {
+                              field.onChange(p.value);
+                              if (p.value !== "camp") {
+                                form.setValue("campStartDate", undefined);
+                              }
+                            }}
+                            className={cn(
+                              "rounded-card border-2 p-4 text-left transition-colors w-full",
+                              selected
+                                ? "border-primary bg-primary-50"
+                                : "border-border bg-surface"
+                            )}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3 min-w-0">
+                                <div
+                                  className={cn(
+                                    "mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center",
+                                    selected ? "border-primary" : "border-border"
+                                  )}
+                                >
+                                  {selected && (
+                                    <div className="h-2 w-2 rounded-full bg-primary" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-bold text-foreground">{p.label}</p>
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    {p.description}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-base font-extrabold text-foreground">
+                                  {fmtUgx(p.amount)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">{p.period}</p>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Camp date picker — visible only when camp is selected */}
+              {watchedPlan === "camp" && (
+                <div className="mt-3">
+                  <FieldCard>
+                    <FormField
+                      control={form.control}
+                      name="campStartDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FieldLabel>Camp start date</FieldLabel>
+                          <FormControl>
+                            <Input
+                              type="date"
+                              min={new Date().toISOString().split("T")[0]}
+                              {...field}
+                              value={field.value ?? ""}
+                            />
+                          </FormControl>
+                          {watchedCampDate && (
+                            <p className="text-sm font-medium text-primary">
+                              5-day session: {campDateRange(watchedCampDate)}
+                            </p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </FieldCard>
                 </div>
-              </div>
+              )}
 
               {/* Payment method */}
-              <div className="mx-4 mb-3 rounded-card border border-border bg-surface p-4 flex flex-col gap-3">
+              <div className="mx-4 mt-4 rounded-card border border-border bg-surface p-4 flex flex-col gap-3">
                 <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
                   Payment method
                 </p>
                 <div className="rounded-input border-2 border-primary bg-primary-50 p-3 flex items-center gap-3">
                   <div className="h-10 w-10 rounded-input bg-amber-400 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-extrabold text-foreground">
-                      MTN
-                    </span>
+                    <span className="text-[10px] font-extrabold text-foreground">MTN</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-foreground">MTN MoMo</p>
-                    <p className="text-xs text-muted-foreground">
-                      Mobile Money payment
-                    </p>
+                    <p className="text-xs text-muted-foreground">Mobile Money payment</p>
                   </div>
-                  <Check
-                    className="h-5 w-5 text-primary shrink-0"
-                    strokeWidth={3}
-                  />
+                  <Check className="h-5 w-5 text-primary shrink-0" strokeWidth={3} />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   More payment methods coming soon.
@@ -655,35 +742,38 @@ export default function SignupPage() {
               </div>
 
               {/* MoMo number */}
-              <FieldCard>
-                <FormField
-                  control={form.control}
-                  name="momoNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FieldLabel>MTN MoMo number</FieldLabel>
-                      <FormControl>
-                        <Input
-                          type="tel"
-                          inputMode="tel"
-                          placeholder="+256 7xx xxx xxx"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+              <div className="mt-3">
+                <FieldCard>
+                  <FormField
+                    control={form.control}
+                    name="momoNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FieldLabel>MTN MoMo number</FieldLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            inputMode="tel"
+                            placeholder="+256 7xx xxx xxx"
+                            {...field}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  {selectedPlanData && (
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      You will receive a prompt on your phone to authorize the payment of{" "}
+                      <span className="font-bold text-foreground">
+                        {fmtUgx(selectedPlanData.amount)}
+                      </span>
+                      .
+                    </p>
                   )}
-                />
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  You will receive a prompt on your phone to authorize the payment
-                  of{" "}
-                  <span className="font-bold text-foreground">
-                    {fmtUgx(ACTIVATION_AMOUNT)}
-                  </span>
-                  .
-                </p>
-              </FieldCard>
+                </FieldCard>
+              </div>
             </>
           )}
         </div>
@@ -693,7 +783,7 @@ export default function SignupPage() {
         step={step}
         onBack={goBack}
         onContinue={advance}
-        submitLabel={`Pay ${fmtUgx(ACTIVATION_AMOUNT)}`}
+        submitLabel={selectedPlanData ? `Pay ${fmtUgx(selectedPlanData.amount)}` : "Pay"}
         isSubmitting={submitting}
       />
     </div>

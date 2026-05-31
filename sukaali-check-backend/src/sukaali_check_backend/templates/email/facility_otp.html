@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Your SukaaliCheck Activation Code</title></head>
+<body style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px;">
+  <h2 style="color: #1FA85C;">Your Activation Code — SukaaliCheck</h2>
+  <p>Dear <strong>{{ facility_name }}</strong>,</p>
+  <p>Your facility application has been reviewed and approved. Use the details below to log in and complete your registration.</p>
+
+  <div style="background: #E8F7EE; border: 2px solid #1FA85C; border-radius: 8px; padding: 20px; margin: 20px 0;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr>
+        <td style="font-size: 13px; color: #555; padding: 6px 0; width: 40%;">Facility ID</td>
+        <td style="font-size: 18px; font-weight: bold; font-family: monospace; letter-spacing: 2px; color: #1FA85C; padding: 6px 0;">{{ facility_id }}</td>
+      </tr>
+      <tr>
+        <td style="font-size: 13px; color: #555; padding: 6px 0;">Activation code</td>
+        <td style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #1FA85C; padding: 6px 0; font-family: monospace;">{{ otp }}</td>
+      </tr>
+    </table>
+  </div>
+
+  <p style="color: #d97706;">⚠ The activation code expires in <strong>24 hours</strong>. Do not share it with anyone.</p>
+  <ol style="line-height: 1.8;">
+    <li>Go to <strong>sukaalicheck.com/login</strong></li>
+    <li>Enter your Facility ID: <strong style="font-family: monospace;">{{ facility_id }}</strong></li>
+    <li>Enter the activation code above as your password</li>
+    <li>Select a subscription plan and set a permanent password</li>
+  </ol>
+  <p style="color: #888; font-size: 12px;">If you did not submit a registration on SukaaliCheck, please ignore this email.</p>
+</body>
+</html>

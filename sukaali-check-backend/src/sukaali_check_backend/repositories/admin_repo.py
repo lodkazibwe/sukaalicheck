@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 
 from sukaali_check_backend.models.admin import Admin
 
-
 class AdminRepository:
     def __init__(self, db: Session):
         self.db = db

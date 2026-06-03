@@ -1,0 +1,25 @@
+services:
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/sukaalicheck:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    image: ${DOCKERHUB_USERNAME}/sukaalicheck-backend:latest
+    env_file: .env
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot

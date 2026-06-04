@@ -20,14 +20,10 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = Field(default_factory=list)
 
-    # Email (fastapi-mail)
-    mail_username: str = ""
-    mail_password: str = ""
+    # Email (Resend HTTP API)
+    resend_api_key: str = ""
     mail_from: str = "noreply@sukaalicheck.com"
-    mail_server: str = "smtp.gmail.com"
-    mail_port: int = 587
-    mail_tls: bool = True
-    admin_email: str = "admin@sukaalicheck.com"
+    admin_email: str = "sukaalicheckug@gmail.com"
 
     @property
     def is_production(self) -> bool:

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import {
   ChevronLeft,
@@ -101,7 +101,8 @@ const ADVICE: Record<RiskLevel, { heading: string; tips: string[] }> = {
 // ── main component ────────────────────────────────────────────────────────────
 
 export function ResultClient() {
-  const { id } = useParams<{ id: string }>();
+  const pathname = usePathname();
+  const id = pathname.split("/").pop() ?? "";
   const router = useRouter();
   const { token, isHydrated } = useAuthStore();
   const [record, setRecord] = useState<PredictionRecord | null>(null);

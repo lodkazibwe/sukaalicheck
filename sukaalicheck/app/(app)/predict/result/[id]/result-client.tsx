@@ -102,18 +102,20 @@ const ADVICE: Record<RiskLevel, { heading: string; tips: string[] }> = {
 
 export function ResultClient({ id }: { id: string }) {
   const router = useRouter();
-  const { token } = useAuthStore();
+  const { token, isHydrated } = useAuthStore();
   const [record, setRecord] = useState<PredictionRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [summaryOpen, setSummaryOpen] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     const stored = sessionStorage.getItem(`pred_${id}`);
     if (stored) {
       setRecord(JSON.parse(stored) as PredictionRecord);
       setLoading(false);
       return;
     }
+    if (!isHydrated) return; // keep spinner until auth store is ready
     if (!token) {
       setLoading(false);
       return;
@@ -122,7 +124,7 @@ export function ResultClient({ id }: { id: string }) {
       .then((r) => setRecord(apiToLocal(r, id)))
       .catch(() => setRecord(null))
       .finally(() => setLoading(false));
-  }, [id, token]);
+  }, [id, token, isHydrated]);
 
   if (loading) {
     return (

@@ -34,6 +34,9 @@ def _seed_admin() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from sukaali_check_backend.db.session import engine, Base
+    import sukaali_check_backend.models  # noqa: F401 — register all models
+    Base.metadata.create_all(engine)
     _seed_admin()
     from sukaali_check_backend.core.model import init_model
     init_model()

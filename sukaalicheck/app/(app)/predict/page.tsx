@@ -7,7 +7,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronLeft, Check, Loader2 } from "lucide-react";
 
 import { predictionSchema, type PredictionInput } from "@/lib/schemas";
-import { computeRisk, bmi, bmiCategory } from "@/lib/risk-engine";
+import { bmi, bmiCategory } from "@/lib/risk-engine";
+import { predict } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
@@ -257,6 +260,8 @@ function NavButtons({
 export default function PredictPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const token = useAuthStore((s) => s.token);
 
   const form = useForm<PredictionInput>({
     resolver: zodResolver(predictionSchema),
@@ -300,15 +305,39 @@ export default function PredictPage() {
 
   async function submit() {
     const data = form.getValues();
-    await new Promise((r) => setTimeout(r, 600));
-    const result = computeRisk(data);
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem(`pred_${result.id}`, JSON.stringify(result));
+    setLoading(true);
+    try {
+      const apiResult = await predict(token!, {
+        age: data.age,
+        sex: data.sex,
+        weight_kg: data.weight,
+        height_cm: data.height,
+        family_history_diabetes: data.familyHistoryDiabetes,
+        hypertension: data.hypertension,
+        physical_activity: data.physicalActivity,
+        diet_quality: data.dietQuality,
+        blood_glucose: data.bloodGlucose ?? undefined,
+      });
+      const record = {
+        id: apiResult.prediction_id,
+        patientName: `Patient #p_${apiResult.prediction_id.slice(-4)}`,
+        age: data.age,
+        sex: data.sex,
+        riskLevel: apiResult.risk_level,
+        riskScore: apiResult.risk_score,
+        createdAt: apiResult.created_at,
+        keyFactors: apiResult.key_factors,
+      };
+      sessionStorage.setItem(`pred_${record.id}`, JSON.stringify(record));
+      router.push(`/predict/result/${record.id}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Prediction failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    router.push(`/predict/result/${result.id}`);
   }
 
-  const isSubmitting = form.formState.isSubmitting;
+  const isSubmitting = loading;
   const values = form.getValues();
 
   return (

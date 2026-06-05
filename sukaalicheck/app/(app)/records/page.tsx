@@ -4,14 +4,11 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ChevronLeft, Search, SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 
-import {
-  MOCK_RECORDS,
-  todayRecords,
-  thisWeekRecords,
-  type RiskLevel,
-  type PredictionRecord,
-} from "@/lib/mock";
+import { getRecords, type RecordOut } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
+import { type RiskLevel } from "@/lib/mock";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { RiskBadge } from "@/components/risk-badge";
@@ -28,7 +25,6 @@ function formatRow(iso: string) {
   const twoDaysAgo = new Date(today);
   twoDaysAgo.setDate(today.getDate() - 2);
   const time = d.toLocaleTimeString("en-UG", { hour: "2-digit", minute: "2-digit" });
-
   if (d.toDateString() === today.toDateString()) return `Today · ${time}`;
   if (d.toDateString() === yesterday.toDateString()) return `Yesterday · ${time}`;
   if (d.toDateString() === twoDaysAgo.toDateString()) return `2 days ago · ${time}`;
@@ -37,26 +33,41 @@ function formatRow(iso: string) {
 
 export default function RecordsPage() {
   const router = useRouter();
+  const { token } = useAuthStore();
   const [search, setSearch] = useState("");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
   const [dateFilter, setDateFilter] = useState<DateFilter>("week");
 
-  const filtered = useMemo<PredictionRecord[]>(() => {
-    let records: PredictionRecord[] = MOCK_RECORDS;
+  const { data, isLoading } = useQuery({
+    queryKey: ["records", token],
+    queryFn: () => getRecords(token!, { limit: 200 }),
+    enabled: !!token,
+  });
 
-    if (dateFilter === "today") records = todayRecords(records);
-    else if (dateFilter === "week") records = thisWeekRecords(records);
+  const allRecords = data?.records ?? [];
+  const total = data?.total ?? 0;
 
-    if (riskFilter !== "all")
-      records = records.filter((r) => r.riskLevel === riskFilter);
+  const filtered = useMemo<RecordOut[]>(() => {
+    let list = allRecords;
+
+    if (dateFilter === "today") {
+      const todayStr = new Date().toDateString();
+      list = list.filter((r) => new Date(r.created_at).toDateString() === todayStr);
+    } else if (dateFilter === "week") {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      list = list.filter((r) => new Date(r.created_at) >= weekAgo);
+    }
+
+    if (riskFilter !== "all") list = list.filter((r) => r.risk_level === riskFilter);
 
     if (search.trim()) {
       const q = search.trim().toUpperCase();
-      records = records.filter((r) => patientId(r.id).includes(q));
+      list = list.filter((r) => patientId(r.prediction_id).includes(q));
     }
 
-    return records;
-  }, [search, riskFilter, dateFilter]);
+    return list;
+  }, [allRecords, search, riskFilter, dateFilter]);
 
   return (
     <div className="flex flex-col max-w-lg mx-auto min-h-full bg-muted">
@@ -71,7 +82,9 @@ export default function RecordsPage() {
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold text-foreground">Records</h1>
-          <p className="text-sm text-muted-foreground">{MOCK_RECORDS.length} predictions</p>
+          <p className="text-sm text-muted-foreground">
+            {isLoading ? "Loading…" : `${total} prediction${total === 1 ? "" : "s"}`}
+          </p>
         </div>
         <button
           type="button"
@@ -145,7 +158,11 @@ export default function RecordsPage() {
         </div>
 
         {/* ── List ── */}
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <p className="text-sm text-muted-foreground">Loading records…</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <p className="text-sm text-muted-foreground">No predictions yet</p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -159,22 +176,22 @@ export default function RecordsPage() {
             <CardContent className="p-0 divide-y divide-border">
               {filtered.map((record) => (
                 <Link
-                  key={record.id}
-                  href={`/predict/result/${record.id}`}
+                  key={record.prediction_id}
+                  href={`/predict/result/${record.prediction_id}`}
                   className="flex items-center gap-3 px-4 py-3 active:bg-muted transition-colors min-h-[60px]"
                 >
                   <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs shrink-0 font-mono">
-                    {patientId(record.id).slice(0, 2)}
+                    {patientId(record.prediction_id).slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate font-mono tracking-wider">
-                      {patientId(record.id)}
+                      {patientId(record.prediction_id)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {record.age} · {record.sex} · {formatRow(record.createdAt)}
+                      {record.age} · {record.sex} · {formatRow(record.created_at)}
                     </p>
                   </div>
-                  <RiskBadge level={record.riskLevel} size="sm" />
+                  <RiskBadge level={record.risk_level} size="sm" />
                 </Link>
               ))}
             </CardContent>

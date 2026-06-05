@@ -18,9 +18,9 @@ There is no `typecheck` or `test` script. To type-check manually: `npx tsc --noE
 
 ## Project status
 
-**v1 scope (current):** Login, Dashboard, New Prediction, Risk Result, Records list. End-to-end flow with client-side risk computation and sessionStorage result passing.
+**v1 scope (current):** Login, Dashboard, New Prediction, Risk Result, Records list, facility Signup (multi-step), Payment flow, Change Password, Admin portal. End-to-end flow with client-side risk computation and sessionStorage result passing.
 
-**Out of scope until explicitly requested:** billing/payments, device binding, admin dashboard, real PDF generation, real ML model integration, SMS reports.
+**Out of scope until explicitly requested:** device binding, real PDF generation, real ML model integration, SMS reports.
 
 Do not scaffold out-of-scope features. If a task seems to require one, stop and ask.
 
@@ -87,7 +87,10 @@ Defined as CSS variables in `app/globals.css`. **Always use the tokens, never ha
 
 ```
 app/
-  (auth)/login/page.tsx          # login screen
+  (auth)/
+    login/page.tsx               # facility login
+    change-password/page.tsx     # set password after payment confirmation
+    payment/page.tsx             # plan selection + payment initiation
   (public)/page.tsx              # landing page
   (public)/signup/page.tsx       # facility signup (multi-step)
   (app)/
@@ -102,6 +105,11 @@ app/
       page.tsx                   # records list
       [id]/page.tsx              # record detail (placeholder)
     profile/page.tsx             # profile screen
+  admin/
+    login/page.tsx               # admin login
+    layout.tsx                   # admin auth guard
+    dashboard/page.tsx           # facility approval + management
+    page.tsx                     # admin root redirect
   globals.css                    # Tailwind v4 theme + CSS variables
   layout.tsx                     # root layout (fonts, Providers)
 
@@ -118,11 +126,12 @@ lib/
   utils.ts                       # cn(), patientId()
 
 stores/
-  auth.ts                        # Zustand: token + user in sessionStorage
+  auth.ts                        # Zustand: facility token + user in sessionStorage
+  admin-auth.ts                  # Zustand: admin token in sessionStorage
   language.ts                    # Zustand: lang preference in localStorage
 ```
 
-`lib/api.ts` is planned but does not exist yet. All data flows are local (sessionStorage/mock) for v1.
+`lib/api.ts` exists and holds typed fetch helpers against `NEXT_PUBLIC_API_BASE`. Data flows call the real FastAPI backend; `lib/mock.ts` is retained for dev fallback only.
 
 ---
 
@@ -264,11 +273,8 @@ Keep in sync with `lib/schemas.ts`.
 ## TODO for v2 (do not build yet)
 
 - Real ML model integration
-- PDF report generation (Spring Boot / iText)
-- Billing: MTN MoMo + Airtel Money via Flutterwave
-- Subscription gating middleware
+- PDF report generation
 - Device binding and concurrent session limits
-- Admin dashboard
 - Recommendations pages (diet, physical activity)
 - SMS report delivery
 - Audit log viewer

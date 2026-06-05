@@ -209,6 +209,72 @@ export function adminRejectFacility(
   });
 }
 
+// ─── Prediction ──────────────────────────────────────────────────────────────
+
+export interface PredictPayload {
+  age: number;
+  sex: "Male" | "Female";
+  weight_kg: number;
+  height_cm: number;
+  family_history_diabetes: "yes" | "no";
+  hypertension: "yes" | "no";
+  physical_activity: "low" | "intermediate" | "high";
+  diet_quality: number;
+  blood_glucose?: number;
+}
+
+export interface PredictResult {
+  prediction_id: string;
+  risk_level: "low" | "intermediate" | "high";
+  risk_score: number;
+  key_factors: string[];
+  created_at: string;
+}
+
+export function predict(token: string, data: PredictPayload): Promise<PredictResult> {
+  return apiFetch("/api/v1/predict", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+}
+
+export interface RecordOut {
+  prediction_id: string;
+  age: number;
+  sex: string;
+  bmi: number;
+  risk_level: "low" | "intermediate" | "high";
+  risk_score: number;
+  key_factors: string[];
+  created_at: string;
+}
+
+export interface RecordsResponse {
+  records: RecordOut[];
+  total: number;
+}
+
+export function getRecords(
+  token: string,
+  params?: { risk?: string; limit?: number; offset?: number },
+): Promise<RecordsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.risk) qs.set("risk", params.risk);
+  if (params?.limit !== undefined) qs.set("limit", String(params.limit));
+  if (params?.offset !== undefined) qs.set("offset", String(params.offset));
+  const q = qs.toString();
+  return apiFetch(`/api/v1/predict/records${q ? `?${q}` : ""}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function getRecord(token: string, predictionId: string): Promise<RecordOut> {
+  return apiFetch(`/api/v1/predict/records/${predictionId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const PLAN_NAMES: Record<string, string> = {

@@ -3,16 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight, Plus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { useAuthStore } from "@/stores/auth";
-import {
-  MOCK_RECORDS,
-  MOCK_STAFF,
-  daysUntil,
-  todayRecords,
-  thisWeekRecords,
-  type Staff,
-} from "@/lib/mock";
+import { getRecords, type RecordOut } from "@/lib/api";
+import { MOCK_STAFF, daysUntil, type Staff } from "@/lib/mock";
 import { Card, CardContent } from "@/components/ui/card";
 import { RiskBadge } from "@/components/risk-badge";
 import { cn, patientId } from "@/lib/utils";
@@ -70,17 +65,35 @@ function SubscriptionLine({ user }: { user: Staff | null }) {
   );
 }
 
+function computeStats(records: RecordOut[]) {
+  const todayStr = new Date().toDateString();
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const todayCount = records.filter(
+    (r) => new Date(r.created_at).toDateString() === todayStr
+  ).length;
+  const weekRecords = records.filter((r) => new Date(r.created_at) >= weekAgo);
+  const weekCount = weekRecords.length;
+  const highRiskCount = weekRecords.filter((r) => r.risk_level === "high").length;
+  return { todayCount, weekCount, highRiskCount };
+}
+
 export default function DashboardPage() {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
+
+  const { data } = useQuery({
+    queryKey: ["records-dashboard", token],
+    queryFn: () => getRecords(token!, { limit: 100 }),
+    enabled: !!token,
+  });
+
+  const records = data?.records ?? [];
+  const { todayCount, weekCount, highRiskCount } = computeStats(records);
+  const recent = records.slice(0, 5);
 
   const staff = user ?? MOCK_STAFF;
   const canPredict = staff.subscriptionStatus !== "expired";
-
-  const todayCount = todayRecords(MOCK_RECORDS).length;
-  const weekRecords = thisWeekRecords(MOCK_RECORDS);
-  const weekCount = weekRecords.length;
-  const highRiskCount = weekRecords.filter((r) => r.riskLevel === "high").length;
-  const recent = MOCK_RECORDS.slice(0, 5);
   const userInitials = staffInitials(user?.name ?? "Staff User");
 
   return (
@@ -195,22 +208,22 @@ export default function DashboardPage() {
             <CardContent className="p-0 divide-y divide-border">
               {recent.map((record) => (
                 <Link
-                  key={record.id}
-                  href={`/predict/result/${record.id}`}
+                  key={record.prediction_id}
+                  href={`/predict/result/${record.prediction_id}`}
                   className="flex items-center gap-3 px-4 py-3 active:bg-muted transition-colors min-h-[56px]"
                 >
                   <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center text-foreground font-semibold text-xs shrink-0 font-mono">
-                    {patientId(record.id).slice(0, 2)}
+                    {patientId(record.prediction_id).slice(0, 2)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground truncate font-mono tracking-wider">
-                      {patientId(record.id)}
+                      {patientId(record.prediction_id)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {record.age} · {record.sex} · {formatRow(record.createdAt)}
+                      {record.age} · {record.sex} · {formatRow(record.created_at)}
                     </p>
                   </div>
-                  <RiskBadge level={record.riskLevel} size="sm" />
+                  <RiskBadge level={record.risk_level} size="sm" />
                 </Link>
               ))}
             </CardContent>

@@ -13,10 +13,26 @@ import {
   Lightbulb,
 } from "lucide-react";
 
-import { MOCK_RECORDS, type PredictionRecord, type RiskLevel } from "@/lib/mock";
+import { type PredictionRecord, type RiskLevel } from "@/lib/mock";
+import { getRecord, type RecordOut } from "@/lib/api";
+import { useAuthStore } from "@/stores/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn, patientId } from "@/lib/utils";
+
+function apiToLocal(r: RecordOut, id: string): PredictionRecord {
+  return {
+    id,
+    patientName: `Patient #p_${id.slice(-4)}`,
+    age: r.age,
+    sex: r.sex as "Male" | "Female",
+    riskLevel: r.risk_level,
+    riskScore: r.risk_score,
+    createdAt: r.created_at,
+    keyFactors: r.key_factors,
+    staffId: "",
+  };
+}
 
 // ── risk helpers ──────────────────────────────────────────────────────────────
 
@@ -86,17 +102,35 @@ const ADVICE: Record<RiskLevel, { heading: string; tips: string[] }> = {
 
 export function ResultClient({ id }: { id: string }) {
   const router = useRouter();
+  const { token } = useAuthStore();
   const [record, setRecord] = useState<PredictionRecord | null>(null);
+  const [loading, setLoading] = useState(true);
   const [summaryOpen, setSummaryOpen] = useState(false);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(`pred_${id}`);
     if (stored) {
       setRecord(JSON.parse(stored) as PredictionRecord);
+      setLoading(false);
       return;
     }
-    setRecord(MOCK_RECORDS.find((r) => r.id === id) ?? null);
-  }, [id]);
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    getRecord(token, id)
+      .then((r) => setRecord(apiToLocal(r, id)))
+      .catch(() => setRecord(null))
+      .finally(() => setLoading(false));
+  }, [id, token]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <p className="text-muted-foreground text-sm">Loading…</p>
+      </div>
+    );
+  }
 
   if (!record) {
     return (

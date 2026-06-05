@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   ChevronLeft,
@@ -100,7 +100,8 @@ const ADVICE: Record<RiskLevel, { heading: string; tips: string[] }> = {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export function ResultClient({ id }: { id: string }) {
+export function ResultClient() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { token, isHydrated } = useAuthStore();
   const [record, setRecord] = useState<PredictionRecord | null>(null);

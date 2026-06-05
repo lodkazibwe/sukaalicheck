@@ -35,6 +35,8 @@ def _seed_admin() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _seed_admin()
+    from sukaali_check_backend.core.model import init_model
+    init_model()
     yield
 
 
@@ -77,10 +79,12 @@ async def rate_limit_handler(request, exc) -> JSONResponse:
 from sukaali_check_backend.api.routes.admin import router as admin_router  # noqa: E402
 from sukaali_check_backend.api.routes.auth import router as auth_router  # noqa: E402
 from sukaali_check_backend.api.routes.payment import router as payment_router  # noqa: E402
+from sukaali_check_backend.api.routes.predict import router as predict_router  # noqa: E402
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Auth"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["Admin"])
 app.include_router(payment_router, prefix="/api/v1/payment", tags=["Payment"])
+app.include_router(predict_router, prefix="/api/v1/predict", tags=["Predict"])
 
 
 def custom_openapi():

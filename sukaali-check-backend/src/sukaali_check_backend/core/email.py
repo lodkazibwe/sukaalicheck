@@ -48,6 +48,22 @@ async def send_admin_notification(
         logger.error("Failed to send admin notification: %s", e)
 
 
+async def send_rejection_email(to_email: str, facility_name: str, reason: str) -> None:
+    try:
+        env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=True)
+        html = env.get_template("facility_rejection.html").render(
+            facility_name=facility_name,
+            reason=reason,
+        )
+        await _send(
+            to=to_email,
+            subject="SukaaliCheck — Application Update",
+            html=html,
+        )
+    except Exception as e:
+        logger.error("Failed to send rejection email to %s: %s", to_email, e)
+
+
 async def send_otp_email(to_email: str, facility_name: str, facility_id: str, otp: str) -> None:
     try:
         env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=True)

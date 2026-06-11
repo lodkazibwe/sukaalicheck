@@ -31,6 +31,11 @@ class FacilityDetail(FacilityListItem):
     physical_address: str
     facility_phone: str
     facility_email: str
+    plan_type: str | None = None
+    subscription_expires_at: datetime | None = None
+    rejection_reason: str | None = None
+    failed_login_attempts: int = 0
+    locked_until: datetime | None = None
     specialist: SpecialistOut | None = None
 
 
@@ -52,3 +57,8 @@ class AdminLoginResponse(BaseModel):
     token_type: str = "bearer"
     scope: str
     username: str
+
+
+class AdminChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str

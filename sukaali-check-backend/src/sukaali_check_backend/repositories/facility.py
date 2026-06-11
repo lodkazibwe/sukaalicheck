@@ -35,6 +35,12 @@ class FacilityRepository:
             self.db.refresh(facility)
         return facility
 
+    def set_rejection_reason(self, facility_id: str, reason: str) -> None:
+        facility = self.get_by_facility_id(facility_id)
+        if facility:
+            facility.rejection_reason = reason
+            self.db.commit()
+
     def set_password_hash(self, facility_id: str, password_hash: str) -> None:
         facility = self.get_by_facility_id(facility_id)
         if facility:
@@ -78,6 +84,16 @@ class FacilityRepository:
     def next_facility_sequence_value(self) -> int:
         result = self.db.execute(text("SELECT nextval('facility_id_seq')"))
         return result.scalar()
+
+    def delete(self, facility: Facility) -> None:
+        from sukaali_check_backend.models.otp_token import OtpToken
+        from sukaali_check_backend.models.payment_record import PaymentRecord
+        from sukaali_check_backend.models.prediction_record import PredictionRecord
+        self.db.query(OtpToken).filter(OtpToken.facility_id == facility.id).delete()
+        self.db.query(PaymentRecord).filter(PaymentRecord.facility_id == facility.id).delete()
+        self.db.query(PredictionRecord).filter(PredictionRecord.facility_id == facility.id).delete()
+        self.db.delete(facility)
+        self.db.commit()
 
     def next_sequence_for_prefix(self, prefix: str) -> int:
         result = self.db.execute(

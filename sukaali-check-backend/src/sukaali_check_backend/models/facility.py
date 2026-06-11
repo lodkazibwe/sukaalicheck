@@ -28,6 +28,7 @@ class Facility(Base):
     status: Mapped[str] = mapped_column(String(30), nullable=False, default="pending_approval")
     plan_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
     subscription_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=False), nullable=True)
+    rejection_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), server_default=func.now(), nullable=False
     )

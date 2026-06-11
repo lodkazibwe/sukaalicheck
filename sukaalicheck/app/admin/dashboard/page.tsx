@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -9,8 +9,12 @@ import {
   adminGetFacility,
   adminApproveFacility,
   adminRejectFacility,
+  adminResendOtp,
+  adminUnlockFacility,
+  adminDeleteFacility,
   signout,
   type FacilityListItem,
+  type FacilityDetail,
 } from "@/lib/api";
 import { useAdminAuth } from "@/stores/admin-auth";
 
@@ -27,6 +31,12 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   pending_payment: { bg: "#DBEAFE", text: "#1E40AF" },
   active: { bg: "#D1FAE5", text: "#065F46" },
   rejected: { bg: "#FEE2E2", text: "#991B1B" },
+};
+
+const PLAN_NAMES: Record<string, string> = {
+  monthly: "Monthly",
+  annual: "Annual",
+  camp_week: "Camp week",
 };
 
 function statusLabel(s: string) {
@@ -64,7 +74,7 @@ function RejectModal({
           Reject facility
         </h3>
         <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-          Provide a reason for rejection. This will be recorded.
+          Provide a reason for rejection. This will be recorded and emailed to the facility.
         </p>
         <textarea
           rows={3}
@@ -100,6 +110,119 @@ function RejectModal({
   );
 }
 
+function DeleteModal({
+  facilityName,
+  onConfirm,
+  onCancel,
+}: {
+  facilityName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const [typed, setTyped] = useState("");
+  const match = typed === facilityName;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center px-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div
+        className="relative w-full max-w-sm rounded-t-2xl sm:rounded-2xl p-5 flex flex-col gap-4"
+        style={{ background: "var(--surface)" }}
+      >
+        <h3 className="text-base font-semibold" style={{ color: "var(--brand-red)" }}>
+          Delete facility
+        </h3>
+        <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+          This action is permanent and cannot be undone. All records associated with this facility will be deleted.
+        </p>
+        <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+          Type <strong>{facilityName}</strong> to confirm:
+        </p>
+        <input
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+          style={{
+            border: `1px solid ${match ? "var(--brand-red)" : "var(--border)"}`,
+            background: "var(--surface)",
+            color: "var(--text-primary)",
+          }}
+          placeholder={facilityName}
+          value={typed}
+          onChange={(e) => setTyped(e.target.value)}
+          autoFocus
+        />
+        <div className="flex gap-2">
+          <button
+            className="flex-1 rounded-lg py-2.5 text-sm font-medium"
+            style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+          <button
+            className="flex-1 rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-40"
+            style={{ background: "var(--brand-red)" }}
+            disabled={!match}
+            onClick={onConfirm}
+          >
+            Delete permanently
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SubscriptionSection({ detail }: { detail: FacilityDetail }) {
+  const [now] = useState(Date.now);
+
+  if (!detail.plan_type && !detail.subscription_expires_at) return null;
+
+  const expiresAt = detail.subscription_expires_at
+    ? new Date(detail.subscription_expires_at)
+    : null;
+  const daysLeft = expiresAt
+    ? Math.ceil((expiresAt.getTime() - now) / 86_400_000)
+    : null;
+  const isExpired = daysLeft !== null && daysLeft < 0;
+  const isExpiring = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7;
+
+  return (
+    <InfoSection title="Subscription">
+      {detail.plan_type && (
+        <InfoRow label="Plan" value={PLAN_NAMES[detail.plan_type] ?? detail.plan_type} />
+      )}
+      {expiresAt && (
+        <InfoRow
+          label="Expires"
+          value={expiresAt.toLocaleDateString("en-UG", { dateStyle: "medium" })}
+        />
+      )}
+      {daysLeft !== null && (
+        <div className="flex gap-3 px-4 py-2.5">
+          <span className="text-sm w-24 shrink-0" style={{ color: "var(--text-secondary)" }}>
+            Status
+          </span>
+          <span
+            className="text-sm font-medium"
+            style={{
+              color: isExpired
+                ? "var(--brand-red)"
+                : isExpiring
+                ? "#D97706"
+                : "var(--risk-low)",
+            }}
+          >
+            {isExpired
+              ? "Expired"
+              : isExpiring
+              ? `Expiring in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`
+              : `Active (${daysLeft} days left)`}
+          </span>
+        </div>
+      )}
+    </InfoSection>
+  );
+}
+
 function FacilityDetailPanel({
   token,
   facility,
@@ -113,6 +236,7 @@ function FacilityDetailPanel({
 }) {
   const qc = useQueryClient();
   const [showReject, setShowReject] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ["admin-facility", facility.id],
@@ -142,7 +266,38 @@ function FacilityDetailPanel({
     onError: (err) => toast.error(err instanceof Error ? err.message : "Action failed"),
   });
 
+  const resendOtp = useMutation({
+    mutationFn: () => adminResendOtp(token, facility.id),
+    onSuccess: (res) => toast.success(res.message),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Action failed"),
+  });
+
+  const unlock = useMutation({
+    mutationFn: () => adminUnlockFacility(token, facility.id),
+    onSuccess: (res) => {
+      toast.success(res.message);
+      qc.invalidateQueries({ queryKey: ["admin-facility", facility.id] });
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Action failed"),
+  });
+
+  const deleteFacility = useMutation({
+    mutationFn: () => adminDeleteFacility(token, facility.id),
+    onSuccess: (res) => {
+      toast.success(res.message);
+      qc.invalidateQueries({ queryKey: ["admin-facilities"] });
+      onActionDone();
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Action failed"),
+  });
+
+  const [now] = useState(Date.now);
   const isPendingApproval = facility.status === "pending_approval";
+  const isPendingPayment = facility.status === "pending_payment";
+
+  const isLocked =
+    detail?.locked_until != null &&
+    new Date(detail.locked_until).getTime() > now;
 
   return (
     <>
@@ -152,11 +307,15 @@ function FacilityDetailPanel({
           onCancel={() => setShowReject(false)}
         />
       )}
+      {showDelete && (
+        <DeleteModal
+          facilityName={facility.facility_name}
+          onConfirm={() => deleteFacility.mutate()}
+          onCancel={() => setShowDelete(false)}
+        />
+      )}
 
-      <div
-        className="flex flex-col h-full"
-        style={{ background: "var(--surface)" }}
-      >
+      <div className="flex flex-col h-full" style={{ background: "var(--surface)" }}>
         {/* Header */}
         <div
           className="flex items-center gap-3 px-4 py-4 border-b"
@@ -194,6 +353,46 @@ function FacilityDetailPanel({
             </div>
           ) : detail ? (
             <>
+              {/* Lock warning */}
+              {isLocked && (
+                <div
+                  className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                  style={{ background: "#FEF3C7", border: "1px solid #FCD34D" }}
+                >
+                  <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4 shrink-0" style={{ color: "#92400E" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className="text-xs font-medium" style={{ color: "#92400E" }}>
+                      Account locked — {detail.failed_login_attempts} failed attempts
+                    </span>
+                  </div>
+                  <button
+                    className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                    style={{ background: "#92400E" }}
+                    disabled={unlock.isPending}
+                    onClick={() => unlock.mutate()}
+                  >
+                    {unlock.isPending ? "Unlocking…" : "Unlock"}
+                  </button>
+                </div>
+              )}
+
+              {/* Rejection reason */}
+              {facility.status === "rejected" && detail.rejection_reason && (
+                <div
+                  className="rounded-xl px-4 py-3"
+                  style={{ background: "var(--brand-red-50)", border: "1px solid #FECACA" }}
+                >
+                  <p className="text-xs font-semibold mb-1" style={{ color: "var(--brand-red)" }}>
+                    Rejection reason
+                  </p>
+                  <p className="text-sm" style={{ color: "var(--text-primary)" }}>
+                    {detail.rejection_reason}
+                  </p>
+                </div>
+              )}
+
               <InfoSection title="Facility info">
                 <InfoRow label="Type" value={detail.facility_type} />
                 <InfoRow label="Ownership" value={detail.ownership} />
@@ -209,6 +408,10 @@ function FacilityDetailPanel({
                 />
               </InfoSection>
 
+              {facility.status !== "pending_approval" && (
+                <SubscriptionSection detail={detail} />
+              )}
+
               {detail.specialist && (
                 <InfoSection title="Specialist / supervisor">
                   <InfoRow label="Name" value={detail.specialist.specialist_name} />
@@ -222,29 +425,55 @@ function FacilityDetailPanel({
         </div>
 
         {/* Actions */}
-        {isPendingApproval && (
-          <div
-            className="px-4 py-4 flex gap-3 border-t"
-            style={{ borderColor: "var(--border)" }}
+        <div
+          className="px-4 py-4 flex flex-col gap-2 border-t"
+          style={{ borderColor: "var(--border)" }}
+        >
+          {(isPendingApproval || isPendingPayment) && (
+            <div className="flex gap-3">
+              {isPendingApproval && (
+                <>
+                  <button
+                    className="flex-1 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
+                    style={{ background: "var(--brand-green)" }}
+                    disabled={approve.isPending || reject.isPending}
+                    onClick={() => approve.mutate()}
+                  >
+                    {approve.isPending ? "Approving…" : "Approve"}
+                  </button>
+                  <button
+                    className="flex-1 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
+                    style={{ background: "var(--brand-red)" }}
+                    disabled={approve.isPending || reject.isPending}
+                    onClick={() => setShowReject(true)}
+                  >
+                    Reject
+                  </button>
+                </>
+              )}
+
+              {isPendingPayment && (
+                <button
+                  className="flex-1 rounded-xl py-3 text-sm font-semibold disabled:opacity-60"
+                  style={{ border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                  disabled={resendOtp.isPending}
+                  onClick={() => resendOtp.mutate()}
+                >
+                  {resendOtp.isPending ? "Sending…" : "Resend OTP"}
+                </button>
+              )}
+            </div>
+          )}
+
+          <button
+            className="w-full rounded-xl py-3 text-sm font-semibold disabled:opacity-60"
+            style={{ border: "1px solid var(--brand-red)", color: "var(--brand-red)" }}
+            disabled={deleteFacility.isPending}
+            onClick={() => setShowDelete(true)}
           >
-            <button
-              className="flex-1 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
-              style={{ background: "var(--brand-green)" }}
-              disabled={approve.isPending || reject.isPending}
-              onClick={() => approve.mutate()}
-            >
-              {approve.isPending ? "Approving…" : "Approve"}
-            </button>
-            <button
-              className="flex-1 rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60"
-              style={{ background: "var(--brand-red)" }}
-              disabled={approve.isPending || reject.isPending}
-              onClick={() => setShowReject(true)}
-            >
-              Reject
-            </button>
-          </div>
-        )}
+            {deleteFacility.isPending ? "Deleting…" : "Delete facility"}
+          </button>
+        </div>
       </div>
     </>
   );
@@ -252,10 +481,7 @@ function FacilityDetailPanel({
 
 function InfoSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div
-      className="rounded-xl overflow-hidden"
-      style={{ border: "1px solid var(--border)" }}
-    >
+    <div className="rounded-xl overflow-hidden" style={{ border: "1px solid var(--border)" }}>
       <div
         className="px-4 py-2.5 text-xs font-semibold uppercase tracking-wide"
         style={{ background: "var(--surface-muted)", color: "var(--text-secondary)" }}
@@ -287,6 +513,7 @@ export default function AdminDashboardPage() {
   const { token, username, isHydrated, hydrate, logout } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<string | undefined>(undefined);
   const [selected, setSelected] = useState<FacilityListItem | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     hydrate();
@@ -303,6 +530,17 @@ export default function AdminDashboardPage() {
     queryFn: () => adminListFacilities(token!, activeTab),
     enabled: !!token,
   });
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return facilities;
+    return facilities.filter(
+      (f) =>
+        f.facility_name.toLowerCase().includes(q) ||
+        f.facility_id.toLowerCase().includes(q) ||
+        f.district.toLowerCase().includes(q),
+    );
+  }, [facilities, search]);
 
   async function handleLogout() {
     if (token) await signout(token).catch(() => {});
@@ -349,43 +587,71 @@ export default function AdminDashboardPage() {
             Signed in as {username}
           </p>
         </div>
-        <button
-          onClick={handleLogout}
-          className="rounded-lg px-3 py-1.5 text-sm font-medium"
-          style={{
-            border: "1px solid var(--border)",
-            color: "var(--text-primary)",
-            background: "var(--surface)",
-          }}
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.push("/admin/change-password")}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium"
+            style={{
+              border: "1px solid var(--border)",
+              color: "var(--text-primary)",
+              background: "var(--surface)",
+            }}
+          >
+            Password
+          </button>
+          <button
+            onClick={handleLogout}
+            className="rounded-lg px-3 py-1.5 text-sm font-medium"
+            style={{
+              border: "1px solid var(--border)",
+              color: "var(--text-primary)",
+              background: "var(--surface)",
+            }}
+          >
+            Sign out
+          </button>
+        </div>
       </header>
 
-      {/* Status filter tabs */}
+      {/* Search + status filter */}
       <div
-        className="sticky top-[57px] z-10 flex gap-2 overflow-x-auto px-4 py-2.5"
+        className="sticky top-[57px] z-10 px-4 pt-3 pb-2 flex flex-col gap-2"
         style={{ background: "var(--surface)", borderBottom: "1px solid var(--border)" }}
       >
-        {STATUS_TABS.map((tab) => {
-          const isActive = activeTab === tab.value;
-          return (
-            <button
-              key={String(tab.value)}
-              onClick={() => {
-                setActiveTab(tab.value);
-                setSelected(null);
-              }}
-              className="shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors"
-              style={{
-                background: isActive ? "var(--brand-green)" : "var(--surface-muted)",
-                color: isActive ? "#fff" : "var(--text-secondary)",
-              }}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
+        <input
+          type="search"
+          placeholder="Search by name, ID, or district…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+          style={{
+            border: "1px solid var(--border)",
+            background: "var(--surface-muted)",
+            color: "var(--text-primary)",
+          }}
+        />
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {STATUS_TABS.map((tab) => {
+            const isActive = activeTab === tab.value;
+            return (
+              <button
+                key={String(tab.value)}
+                onClick={() => {
+                  setActiveTab(tab.value);
+                  setSelected(null);
+                  setSearch("");
+                }}
+                className="shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors"
+                style={{
+                  background: isActive ? "var(--brand-green)" : "var(--surface-muted)",
+                  color: isActive ? "#fff" : "var(--text-secondary)",
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* List */}
@@ -397,7 +663,7 @@ export default function AdminDashboardPage() {
               style={{ borderColor: "var(--brand-green)", borderTopColor: "transparent" }}
             />
           </div>
-        ) : facilities.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
             <svg
               className="h-10 w-10"
@@ -414,11 +680,11 @@ export default function AdminDashboardPage() {
               />
             </svg>
             <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-              No facilities found
+              {search ? "No facilities match your search" : "No facilities found"}
             </p>
           </div>
         ) : (
-          facilities.map((f) => (
+          filtered.map((f) => (
             <button
               key={f.id}
               onClick={() => setSelected(f)}

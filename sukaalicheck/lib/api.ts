@@ -161,6 +161,11 @@ export interface FacilityDetail extends FacilityListItem {
   physical_address: string;
   facility_phone: string;
   facility_email: string;
+  plan_type: string | null;
+  subscription_expires_at: string | null;
+  rejection_reason: string | null;
+  failed_login_attempts: number;
+  locked_until: string | null;
   specialist: SpecialistOut | null;
 }
 
@@ -206,6 +211,39 @@ export function adminRejectFacility(
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ reason }),
+  });
+}
+
+export function adminResendOtp(token: string, id: string): Promise<{ message: string }> {
+  return apiFetch(`/api/v1/admin/facilities/${id}/resend-otp`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function adminUnlockFacility(token: string, id: string): Promise<{ message: string }> {
+  return apiFetch(`/api/v1/admin/facilities/${id}/unlock`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function adminDeleteFacility(token: string, id: string): Promise<{ message: string }> {
+  return apiFetch(`/api/v1/admin/facilities/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function adminChangePassword(
+  token: string,
+  current_password: string,
+  new_password: string,
+): Promise<{ message: string }> {
+  return apiFetch("/api/v1/admin/auth/change-password", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ current_password, new_password }),
   });
 }
 

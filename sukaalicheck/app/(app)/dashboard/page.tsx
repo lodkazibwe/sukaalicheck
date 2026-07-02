@@ -147,19 +147,23 @@ export default function DashboardPage() {
             <ChevronRight className="h-5 w-5 text-white/70 shrink-0" />
           </Link>
         ) : (
-          <div className="flex items-center gap-4 rounded-card bg-primary/40 px-5 py-4 cursor-not-allowed">
+          <Link
+            href="/renew"
+            className="flex items-center gap-4 rounded-card bg-danger px-5 py-4 active:opacity-90 transition-opacity"
+          >
             <div className="h-10 w-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-              <Plus className="h-5 w-5 text-white/50" />
+              <Plus className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-white/60 text-base leading-tight">
-                New patient prediction
+              <p className="font-bold text-white text-base leading-tight">
+                Renew your subscription
               </p>
-              <p className="text-sm text-white/50 mt-0.5 leading-snug">
-                Renew your subscription to continue
+              <p className="text-sm text-white/80 mt-0.5 leading-snug">
+                Your subscription has expired — tap to renew
               </p>
             </div>
-          </div>
+            <ChevronRight className="h-5 w-5 text-white/70 shrink-0" />
+          </Link>
         )}
       </div>
 

@@ -3,6 +3,8 @@ from enum import Enum
 
 from pydantic import BaseModel, model_validator
 
+from sukaali_check_backend.schemas.auth import FacilityOut
+
 
 class PlanType(str, Enum):
     monthly = "monthly"
@@ -35,9 +37,33 @@ class InitiatePaymentResponse(BaseModel):
     amount: int
     plan_start_date: date
     plan_end_date: date
-    status: str
-    access_token: str
+    status: str  # "completed" (auto path) | "pending" (MoMo path)
+    access_token: str | None = None  # present only when status == "completed"
     token_type: str = "bearer"
+
+
+class RenewPaymentResponse(BaseModel):
+    reference: str
+    plan_type: str
+    amount: int
+    plan_start_date: date
+    plan_end_date: date
+    status: str  # "completed" (auto path) | "pending" (MoMo path)
+    facility: FacilityOut | None = None  # present only when status == "completed"
+
+
+class PaymentStatusResponse(BaseModel):
+    status: str  # "pending" | "completed" | "failed"
+    access_token: str | None = None
+    token_type: str = "bearer"
+    scope: str | None = None
+    reason: str | None = None
+
+
+class RenewStatusResponse(BaseModel):
+    status: str  # "pending" | "completed" | "failed"
+    facility: FacilityOut | None = None
+    reason: str | None = None
 
 
 class ConfirmPaymentRequest(BaseModel):

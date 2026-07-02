@@ -12,6 +12,8 @@ import {
   adminResendOtp,
   adminUnlockFacility,
   adminDeleteFacility,
+  getPaymentSetting,
+  setPaymentSetting,
   signout,
   type FacilityListItem,
   type FacilityDetail,
@@ -531,6 +533,24 @@ export default function AdminDashboardPage() {
     enabled: !!token,
   });
 
+  const queryClient = useQueryClient();
+  const { data: paymentSetting } = useQuery({
+    queryKey: ["admin-payment-setting"],
+    queryFn: () => getPaymentSetting(token!),
+    enabled: !!token,
+  });
+  const paymentMutation = useMutation({
+    mutationFn: (enabled: boolean) => setPaymentSetting(token!, enabled),
+    onSuccess: (data) => {
+      queryClient.setQueryData(["admin-payment-setting"], data);
+      toast.success(
+        data.enabled ? "MoMo payment is now required" : "MoMo payment disabled (auto-activate)",
+      );
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Could not update setting"),
+  });
+  const paymentEnabled = paymentSetting?.enabled ?? false;
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return facilities;
@@ -656,6 +676,37 @@ export default function AdminDashboardPage() {
 
       {/* List */}
       <main className="flex-1 px-4 py-4 flex flex-col gap-3">
+        {/* Payment setting */}
+        <div
+          className="rounded-xl p-4 flex items-center justify-between gap-3"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)" }}
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              Require MoMo payment
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
+              {paymentEnabled
+                ? "Subscriptions and renewals are charged via MTN MoMo."
+                : "Off — subscriptions and renewals activate instantly without charge."}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={paymentEnabled}
+            disabled={paymentMutation.isPending}
+            onClick={() => paymentMutation.mutate(!paymentEnabled)}
+            className="relative h-6 w-11 rounded-full shrink-0 transition-colors disabled:opacity-50"
+            style={{ background: paymentEnabled ? "var(--brand-green)" : "var(--border)" }}
+          >
+            <span
+              className="absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all"
+              style={{ left: paymentEnabled ? "22px" : "2px" }}
+            />
+          </button>
+        </div>
+
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <div

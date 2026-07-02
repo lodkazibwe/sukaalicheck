@@ -62,3 +62,11 @@ class AdminLoginResponse(BaseModel):
 class AdminChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
+
+
+class PaymentSettingRequest(BaseModel):
+    enabled: bool
+
+
+class PaymentSettingResponse(BaseModel):
+    enabled: bool

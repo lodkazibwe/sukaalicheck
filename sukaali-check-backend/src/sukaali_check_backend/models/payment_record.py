@@ -26,6 +26,7 @@ class PaymentRecord(Base):
     plan_end_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
     provider_ref: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=False), server_default=func.now(), nullable=False
     )

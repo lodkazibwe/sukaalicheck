@@ -14,6 +14,8 @@ from sukaali_check_backend.schemas.admin import (
     ApproveRequest,
     FacilityDetail,
     FacilityListItem,
+    PaymentSettingRequest,
+    PaymentSettingResponse,
     RejectRequest,
     SpecialistOut,
 )
@@ -36,6 +38,23 @@ def admin_change_password(
     return admin_service.change_admin_password(
         db, payload["sub"], body.current_password, body.new_password
     )
+
+
+@router.get("/settings/payment-enabled", response_model=PaymentSettingResponse)
+def get_payment_enabled(
+    payload: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> PaymentSettingResponse:
+    return PaymentSettingResponse(enabled=admin_service.get_payment_enabled(db))
+
+
+@router.post("/settings/payment-enabled", response_model=PaymentSettingResponse)
+def set_payment_enabled(
+    body: PaymentSettingRequest,
+    payload: dict = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> PaymentSettingResponse:
+    return PaymentSettingResponse(enabled=admin_service.set_payment_enabled(db, body.enabled))
 
 
 @router.get("/facilities", response_model=list[FacilityListItem])

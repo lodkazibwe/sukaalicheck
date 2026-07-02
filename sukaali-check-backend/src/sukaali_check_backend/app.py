@@ -32,12 +32,30 @@ def _seed_admin() -> None:
         db.close()
 
 
+def _seed_settings() -> None:
+    from sukaali_check_backend.db.session import SessionLocal
+    from sukaali_check_backend.repositories.app_setting import AppSettingRepository, PAYMENT_ENABLED_KEY
+
+    db = SessionLocal()
+    try:
+        repo = AppSettingRepository(db)
+        if repo.get(PAYMENT_ENABLED_KEY) is None:
+            repo.set(PAYMENT_ENABLED_KEY, "false")
+            logger.info("Seeded default setting %s=false", PAYMENT_ENABLED_KEY)
+    except Exception as e:
+        logger.error("Failed to seed settings: %s", e)
+        db.rollback()
+    finally:
+        db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from sukaali_check_backend.db.session import engine, Base
     import sukaali_check_backend.models  # noqa: F401 — register all models
     Base.metadata.create_all(engine)
     _seed_admin()
+    _seed_settings()
     from sukaali_check_backend.core.model import init_model
     init_model()
     yield

@@ -6,11 +6,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Check, Loader2, Smartphone } from "lucide-react";
+import { ChevronLeft, Check, Loader2, Smartphone } from "lucide-react";
 
 import { paymentSchema, type PaymentInput } from "@/lib/schemas";
-import { getPlans, initiatePayment, getPaymentStatus } from "@/lib/api";
+import { getPlans, renewSubscription, getRenewStatus, facilityToStaff } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import { daysUntil } from "@/lib/mock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,26 +36,14 @@ function campDateRange(startIso: string): string {
   return `${fmt(start)} – ${fmt(end)} ${end.getFullYear()}`;
 }
 
-export default function PaymentPage() {
+export default function RenewPage() {
   const router = useRouter();
-  const { hydrate, isHydrated, token, scope, setToken } = useAuthStore();
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
-  useEffect(() => {
-    if (!isHydrated) return;
-    if (!token || scope !== "first_login") {
-      router.replace("/login");
-    }
-  }, [isHydrated, token, scope, router]);
+  const { token, user, setUser } = useAuthStore();
 
   const { data: plans, isLoading: plansLoading, isError: plansError } = useQuery({
     queryKey: ["plans"],
     queryFn: getPlans,
     staleTime: Infinity,
-    enabled: isHydrated && scope === "first_login",
   });
 
   const form = useForm<PaymentInput>({
@@ -65,41 +54,44 @@ export default function PaymentPage() {
   const watchedCampDate = form.watch("campStartDate");
   const selectedPlan = plans?.find((p) => p.plan_type === watchedPlan);
 
-  // MoMo async flow: reference of an in-flight payment to poll.
+  const days = user?.subscriptionExpiresAt ? daysUntil(user.subscriptionExpiresAt) : -1;
+  const expired = user?.subscriptionStatus === "expired" || days <= 0;
+
+  // MoMo async flow: reference of an in-flight renewal to poll.
   const [pendingRef, setPendingRef] = useState<string | null>(null);
   const [pendingNumber, setPendingNumber] = useState("");
   const [pollNonce, setPollNonce] = useState(0);
   const [tookTooLong, setTookTooLong] = useState(false);
 
-  function onSuccess(accessToken: string) {
-    setToken(accessToken, "payment_done");
-    router.replace("/change-password");
+  function onSuccess(facility: Parameters<typeof facilityToStaff>[0]) {
+    setUser(facilityToStaff(facility));
+    toast.success("Subscription renewed successfully");
+    router.replace("/profile");
   }
 
   async function onSubmit(data: PaymentInput) {
     if (!token) return;
     try {
-      const res = await initiatePayment(token, {
+      const res = await renewSubscription(token, {
         plan_type: data.plan,
         momo_number: data.momoNumber,
         ...(data.plan === "camp_week" && data.campStartDate
           ? { camp_start_date: data.campStartDate }
           : {}),
       });
-      if (res.status === "completed" && res.access_token) {
-        onSuccess(res.access_token);
+      if (res.status === "completed" && res.facility) {
+        onSuccess(res.facility);
         return;
       }
-      // Pending → MoMo prompt sent to the phone; poll for the result.
       setPendingNumber(data.momoNumber);
       setTookTooLong(false);
       setPendingRef(res.reference);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Payment failed. Please try again.");
+      toast.error(err instanceof Error ? err.message : "Renewal failed. Please try again.");
     }
   }
 
-  // Poll payment status while a MoMo request is in flight.
+  // Poll renewal status while a MoMo request is in flight.
   useEffect(() => {
     if (!pendingRef || !token) return;
     let cancelled = false;
@@ -110,10 +102,10 @@ export default function PaymentPage() {
     const poll = async () => {
       attempts += 1;
       try {
-        const res = await getPaymentStatus(token, pendingRef);
+        const res = await getRenewStatus(token, pendingRef);
         if (cancelled) return;
-        if (res.status === "completed" && res.access_token) {
-          onSuccess(res.access_token);
+        if (res.status === "completed" && res.facility) {
+          onSuccess(res.facility);
           return;
         }
         if (res.status === "failed") {
@@ -140,14 +132,6 @@ export default function PaymentPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingRef, token, pollNonce]);
 
-  if (!isHydrated || !token) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted">
-        <div className="h-8 w-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
   if (pendingRef) {
     return (
       <div className="flex flex-col max-w-lg mx-auto min-h-screen bg-muted px-4 pt-10">
@@ -160,7 +144,7 @@ export default function PaymentPage() {
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
               We sent a payment request to{" "}
               <span className="font-semibold text-foreground">{pendingNumber}</span>. Enter your
-              MoMo PIN on the prompt to complete the payment.
+              MoMo PIN on the prompt to complete the renewal.
             </p>
           </div>
 
@@ -203,19 +187,52 @@ export default function PaymentPage() {
   return (
     <div className="flex flex-col max-w-lg mx-auto min-h-screen bg-muted">
       {/* Header */}
-      <div className="px-4 pt-10 pb-5 bg-surface border-b border-border">
-        <h1 className="text-2xl font-extrabold text-foreground">Choose a plan</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Select the package that works for your facility.
-        </p>
+      <div className="flex items-center gap-3 px-4 pt-10 pb-5 bg-surface border-b border-border">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="h-11 w-11 flex items-center justify-center -ml-2 shrink-0"
+        >
+          <ChevronLeft className="h-5 w-5 text-foreground" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-2xl font-extrabold text-foreground">Renew subscription</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {expired
+              ? "Your subscription has expired. Choose a plan to continue."
+              : "Extend your access by choosing a plan below."}
+          </p>
+        </div>
       </div>
 
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="flex flex-col flex-1"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1">
           <div className="flex-1 py-4 flex flex-col gap-4">
+            {/* Current plan summary */}
+            {user && (
+              <div className="mx-4 rounded-card border border-border bg-surface p-4 flex items-center justify-between">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Current plan
+                  </p>
+                  <p className="text-sm font-semibold text-foreground mt-1">{user.plan}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p
+                    className={cn(
+                      "text-sm font-semibold",
+                      expired ? "text-danger" : "text-primary",
+                    )}
+                  >
+                    {expired ? "Expired" : `${days} day${days === 1 ? "" : "s"} left`}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Expires {user.subscriptionExpiry}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Plan cards */}
             {plansLoading && (
               <div className="flex items-center justify-center py-12">

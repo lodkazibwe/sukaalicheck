@@ -31,3 +31,8 @@ class ForbiddenError(DomainError):
 class ValidationError(DomainError):
     status_code = 422
     detail = "Validation error"
+
+
+class PaymentProviderError(DomainError):
+    status_code = 502
+    detail = "Payment provider error"

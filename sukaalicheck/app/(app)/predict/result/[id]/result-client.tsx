@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
+import Image from "next/image";
 import {
   ChevronLeft,
   ChevronDown,
@@ -104,7 +105,7 @@ export function ResultClient() {
   const pathname = usePathname();
   const id = pathname.split("/").pop() ?? "";
   const router = useRouter();
-  const { token, isHydrated } = useAuthStore();
+  const { token, user, isHydrated } = useAuthStore();
   const [record, setRecord] = useState<PredictionRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -148,10 +149,10 @@ export function ResultClient() {
   const advice = ADVICE[record.riskLevel];
 
   return (
-    <div className="flex flex-col max-w-lg mx-auto min-h-full bg-muted">
+    <div className="flex flex-col max-w-lg mx-auto min-h-full bg-muted print:bg-white print:max-w-none">
 
-      {/* ── Top bar ── */}
-      <div className="flex items-center gap-3 px-4 pt-8 pb-4 bg-surface border-b border-border">
+      {/* ── Top bar (screen only) ── */}
+      <div className="flex items-center gap-3 px-4 pt-8 pb-4 bg-surface border-b border-border print:hidden">
         <button
           type="button"
           onClick={() => router.back()}
@@ -172,12 +173,38 @@ export function ResultClient() {
         </button>
       </div>
 
+      {/* ── Report header (print only) ── */}
+      <div className="hidden print:flex items-center gap-3 px-4 pt-4 pb-4 border-b border-border">
+        <div className="relative h-10 w-10 shrink-0">
+          <Image
+            src="/logos/SukaaliCheck.png"
+            alt="SukaaliCheck"
+            fill
+            sizes="40px"
+            className="object-contain"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-bold text-foreground leading-tight">SukaaliCheck</p>
+          <p className="text-xs text-muted-foreground">Diabetes type 2 risk screening report</p>
+        </div>
+        <div className="text-right shrink-0">
+          {user?.facility && (
+            <p className="text-sm font-semibold text-foreground">{user.facility}</p>
+          )}
+          <p className="text-xs text-muted-foreground font-mono tracking-wider">
+            ID: {patientId(id)}
+          </p>
+          <p className="text-xs text-muted-foreground">{formatDate(record.createdAt)}</p>
+        </div>
+      </div>
+
       {/* ── Content ── */}
-      <div className="flex flex-col gap-4 px-4 pt-4 pb-10">
+      <div className="flex flex-col gap-4 px-4 pt-4 pb-10 print:gap-3 print:pt-3 print:pb-0">
 
         {/* Risk level card */}
         <div
-          className="rounded-card border border-border bg-surface overflow-hidden"
+          className="rounded-card border border-border bg-surface overflow-hidden print:break-inside-avoid"
           style={{ borderTop: `4px solid ${colour}` }}
         >
           <div className="p-4 flex flex-col gap-3">
@@ -208,7 +235,7 @@ export function ResultClient() {
         </div>
 
         {/* Amber disclaimer */}
-        <div className="rounded-card bg-amber-50 border border-amber-200 p-4 flex gap-3">
+        <div className="rounded-card bg-amber-50 border border-amber-200 p-4 flex gap-3 print:break-inside-avoid">
           <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-sm text-amber-900 leading-relaxed">
             <span className="font-bold">Screening estimate only.</span>{" "}
@@ -217,7 +244,7 @@ export function ResultClient() {
         </div>
 
         {/* Health advice */}
-        <Card>
+        <Card className="print:break-inside-avoid">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center gap-2 mb-3">
               <Lightbulb className="h-4 w-4 text-primary shrink-0" />
@@ -239,7 +266,7 @@ export function ResultClient() {
 
         {/* Contributing factors */}
         {record.keyFactors && record.keyFactors.length > 0 && (
-          <Card>
+          <Card className="print:break-inside-avoid">
             <CardContent className="pt-4 pb-3">
               <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
                 Contributing factors
@@ -260,21 +287,27 @@ export function ResultClient() {
         )}
 
         {/* Patient summary (collapsible) */}
-        <Card>
+        <Card className="print:break-inside-avoid">
           <button
             type="button"
             onClick={() => setSummaryOpen((v) => !v)}
             className="flex w-full items-center justify-between px-4 py-3.5 text-left min-h-[52px]"
           >
             <span className="text-sm font-semibold text-foreground">Patient summary</span>
-            {summaryOpen ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
+            <span className="print:hidden">
+              {summaryOpen ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </span>
           </button>
-          {summaryOpen && (
-            <CardContent className="pt-0 pb-4 border-t border-border flex flex-col gap-0">
+          <CardContent
+            className={cn(
+              "pt-0 pb-4 border-t border-border flex-col gap-0 print:flex",
+              summaryOpen ? "flex" : "hidden",
+            )}
+          >
               {(
                 [
                   ["Patient ID", patientId(id)],
@@ -293,14 +326,19 @@ export function ResultClient() {
                 </div>
               ))}
             </CardContent>
-          )}
         </Card>
+
+        {/* Print-only disclaimer footer */}
+        <p className="hidden print:block text-xs text-muted-foreground leading-relaxed pt-2 print:break-inside-avoid">
+          This report is a screening estimate generated by SukaaliCheck and is not a medical
+          diagnosis. It should not replace evaluation by a qualified clinician.
+        </p>
 
         {/* Actions */}
         <Button
           size="lg"
-          className="w-full"
-          onClick={() => toast.info("PDF generation coming soon")}
+          className="w-full print:hidden"
+          onClick={() => window.print()}
         >
           <Download className="h-4 w-4" />
           Download PDF report

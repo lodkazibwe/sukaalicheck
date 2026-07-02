@@ -36,6 +36,19 @@ class PaymentRepository:
             record.status = status
             self.db.commit()
 
+    def set_provider_ref(self, reference: str, provider_ref: str) -> None:
+        record = self.get_by_reference(reference)
+        if record:
+            record.provider_ref = provider_ref
+            self.db.commit()
+
+    def mark_failed(self, reference: str, reason: str | None) -> None:
+        record = self.get_by_reference(reference)
+        if record:
+            record.status = "failed"
+            record.failure_reason = (reason or "")[:255] or None
+            self.db.commit()
+
     def get_active_record(self, facility_uuid: uuid.UUID) -> PaymentRecord | None:
         return (
             self.db.query(PaymentRecord)

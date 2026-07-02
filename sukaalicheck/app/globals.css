@@ -48,3 +48,32 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ── Print (Download PDF report) ── */
+@page {
+  margin: 14mm;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  /* Drop the app chrome padding so the report fills the page. */
+  main {
+    padding: 0 !important;
+  }
+
+  /* Print risk colours and card borders faithfully. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Never split a card across pages — move the whole block to the next page. */
+  .break-inside-avoid,
+  [class*="rounded-card"] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

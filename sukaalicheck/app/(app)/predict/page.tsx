@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronLeft, Check, Loader2 } from "lucide-react";
+import { ChevronLeft, Check, Loader2, Lock } from "lucide-react";
 
 import { predictionSchema, type PredictionInput } from "@/lib/schemas";
 import { bmi, bmiCategory } from "@/lib/risk-engine";
 import { predict } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
+import { MOCK_STAFF, daysUntil } from "@/lib/mock";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -262,6 +264,11 @@ export default function PredictPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+
+  const staff = user ?? MOCK_STAFF;
+  const days = staff.subscriptionExpiresAt ? daysUntil(staff.subscriptionExpiresAt) : -1;
+  const subscriptionExpired = staff.subscriptionStatus === "expired" || days <= 0;
 
   const form = useForm<PredictionInput>({
     resolver: zodResolver(predictionSchema),
@@ -339,6 +346,35 @@ export default function PredictPage() {
 
   const isSubmitting = loading;
   const values = form.getValues();
+
+  if (subscriptionExpired) {
+    return (
+      <div className="flex flex-col max-w-lg mx-auto min-h-full bg-muted px-4 pt-8">
+        <div className="rounded-card border border-border bg-surface p-6 flex flex-col items-center text-center gap-4">
+          <div className="h-14 w-14 rounded-full bg-danger-50 flex items-center justify-center">
+            <Lock className="h-7 w-7 text-danger" />
+          </div>
+          <div>
+            <h1 className="text-lg font-extrabold text-foreground">Subscription expired</h1>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Renew your subscription to run new patient predictions.
+            </p>
+          </div>
+          <Link href="/renew" className="w-full">
+            <Button size="lg" className="w-full">
+              Renew subscription
+            </Button>
+          </Link>
+          <Link
+            href="/dashboard"
+            className="text-sm font-semibold text-muted-foreground min-h-[44px] flex items-center"
+          >
+            Back to dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col max-w-lg mx-auto min-h-full bg-muted">

@@ -1,12 +1,20 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from sukaali_check_backend.api.deps import get_current_admin, get_db, get_first_login_facility
+from sukaali_check_backend.api.deps import (
+    get_current_admin,
+    get_current_facility,
+    get_db,
+    get_first_login_facility,
+)
 from sukaali_check_backend.schemas.payment import (
     ConfirmPaymentRequest,
     InitiatePaymentRequest,
     InitiatePaymentResponse,
+    PaymentStatusResponse,
     PlanOption,
+    RenewPaymentResponse,
+    RenewStatusResponse,
 )
 from sukaali_check_backend.services import payment_service
 
@@ -31,6 +39,39 @@ def initiate_payment(
         momo_number=data.momo_number,
         camp_start_date=data.camp_start_date,
     )
+
+
+@router.get("/status/{reference}", response_model=PaymentStatusResponse)
+def payment_status(
+    reference: str,
+    payload: dict = Depends(get_first_login_facility),
+    db: Session = Depends(get_db),
+) -> PaymentStatusResponse:
+    return payment_service.check_first_login_status(db, reference, payload["facility_id"])
+
+
+@router.post("/renew", response_model=RenewPaymentResponse)
+def renew_payment(
+    data: InitiatePaymentRequest,
+    payload: dict = Depends(get_current_facility),
+    db: Session = Depends(get_db),
+) -> RenewPaymentResponse:
+    return payment_service.renew(
+        db,
+        facility_id=payload["facility_id"],
+        plan_type=data.plan_type,
+        momo_number=data.momo_number,
+        camp_start_date=data.camp_start_date,
+    )
+
+
+@router.get("/renew/status/{reference}", response_model=RenewStatusResponse)
+def renew_status(
+    reference: str,
+    payload: dict = Depends(get_current_facility),
+    db: Session = Depends(get_db),
+) -> RenewStatusResponse:
+    return payment_service.check_renew_status(db, reference, payload["facility_id"])
 
 
 @router.post("/confirm")

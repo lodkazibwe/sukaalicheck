@@ -14,7 +14,9 @@ from sukaali_check_backend.core.security import (
     hash_password,
     verify_password,
 )
+from sukaali_check_backend.config import settings
 from sukaali_check_backend.repositories.admin_repo import AdminRepository
+from sukaali_check_backend.repositories.app_setting import AppSettingRepository, PAYMENT_ENABLED_KEY
 from sukaali_check_backend.repositories.facility import FacilityRepository
 from sukaali_check_backend.repositories.otp_token import OtpTokenRepository
 
@@ -133,6 +135,19 @@ def delete_facility(db: Session, facility_uuid: uuid.UUID) -> dict:
     facility_repo.delete(facility)
 
     return {"message": f"Facility {facility_id} has been permanently deleted."}
+
+
+def get_payment_enabled(db: Session) -> bool:
+    return AppSettingRepository(db).get(PAYMENT_ENABLED_KEY, "false") == "true"
+
+
+def set_payment_enabled(db: Session, enabled: bool) -> bool:
+    if enabled and not (
+        settings.momo_subscription_key and settings.momo_api_user and settings.momo_api_key
+    ):
+        raise ValidationError("Configure MoMo credentials before enabling payments")
+    AppSettingRepository(db).set(PAYMENT_ENABLED_KEY, "true" if enabled else "false")
+    return enabled
 
 
 def unlock(db: Session, facility_uuid: uuid.UUID) -> dict:

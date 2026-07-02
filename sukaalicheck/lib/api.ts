@@ -50,9 +50,17 @@ export interface PaymentResponse {
   amount: number;
   plan_start_date: string;
   plan_end_date: string;
-  status: string;
-  access_token: string;
+  status: "completed" | "pending";
+  access_token: string | null;
   token_type: string;
+}
+
+export interface PaymentStatusResponse {
+  status: "pending" | "completed" | "failed";
+  access_token: string | null;
+  token_type: string;
+  scope: string | null;
+  reason: string | null;
 }
 
 // ─── Auth endpoints ───────────────────────────────────────────────────────────
@@ -126,6 +134,45 @@ export function initiatePayment(
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(data),
+  });
+}
+
+export function getPaymentStatus(token: string, reference: string): Promise<PaymentStatusResponse> {
+  return apiFetch(`/api/v1/payment/status/${reference}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export interface RenewResponse {
+  reference: string;
+  plan_type: string;
+  amount: number;
+  plan_start_date: string;
+  plan_end_date: string;
+  status: "completed" | "pending";
+  facility: FacilityOut | null;
+}
+
+export function renewSubscription(
+  token: string,
+  data: InitiatePaymentPayload,
+): Promise<RenewResponse> {
+  return apiFetch("/api/v1/payment/renew", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(data),
+  });
+}
+
+export interface RenewStatusResponse {
+  status: "pending" | "completed" | "failed";
+  facility: FacilityOut | null;
+  reason: string | null;
+}
+
+export function getRenewStatus(token: string, reference: string): Promise<RenewStatusResponse> {
+  return apiFetch(`/api/v1/payment/renew/status/${reference}`, {
+    headers: { Authorization: `Bearer ${token}` },
   });
 }
 
@@ -244,6 +291,23 @@ export function adminChangePassword(
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ current_password, new_password }),
+  });
+}
+
+export function getPaymentSetting(token: string): Promise<{ enabled: boolean }> {
+  return apiFetch("/api/v1/admin/settings/payment-enabled", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function setPaymentSetting(
+  token: string,
+  enabled: boolean,
+): Promise<{ enabled: boolean }> {
+  return apiFetch("/api/v1/admin/settings/payment-enabled", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ enabled }),
   });
 }
 

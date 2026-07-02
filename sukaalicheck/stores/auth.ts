@@ -11,6 +11,7 @@ interface AuthState {
   hydrate: () => void;
   setToken: (token: string, scope: string) => void;
   login: (token: string, user: Staff) => void;
+  setUser: (user: Staff) => void;
   logout: () => void;
 }
 
@@ -40,6 +41,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     sessionStorage.setItem("auth_scope", "facility");
     sessionStorage.setItem("auth_user", JSON.stringify(user));
     set({ token, scope: "facility", user });
+  },
+
+  setUser: (user) => {
+    sessionStorage.setItem("auth_user", JSON.stringify(user));
+    set({ user });
   },
 
   logout: () => {

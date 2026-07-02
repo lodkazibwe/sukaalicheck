@@ -26,6 +26,15 @@ class Settings(BaseSettings):
     mail_from: str = "noreply@sukaalicheck.com"
     admin_email: str = "sukaalicheckug@gmail.com"
 
+    # MTN MoMo Collection API
+    momo_subscription_key: str = ""
+    momo_api_user: str = ""
+    momo_api_key: str = ""
+    momo_target_environment: str = "sandbox"  # sandbox | mtnuganda
+    momo_currency: str = "EUR"  # sandbox=EUR, Uganda production=UGX
+    momo_base_url: str = "https://sandbox.momodeveloper.mtn.com"
+    momo_callback_host: str = ""  # used only by the sandbox provisioning helper
+
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"

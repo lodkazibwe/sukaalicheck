@@ -13,3 +13,9 @@ sukaali-check-backend/*.pyc
 .env
 *.log
 .DS_Store
+
+# Claude / AI assistant files
+.claude/
+.mcp.json
+CLAUDE.md
+AGENTS.md

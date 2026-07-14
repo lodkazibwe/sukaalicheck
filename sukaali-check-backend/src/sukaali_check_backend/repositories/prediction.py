@@ -1,8 +1,18 @@
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
 from sukaali_check_backend.models.prediction_record import PredictionRecord
+
+
+def hba1c_comment(value: float) -> str:
+    """Derive an interpretation comment from an HbA1c result (standard thresholds)."""
+    if value < 5.7:
+        return "Normal"
+    if value < 6.5:
+        return "Prediabetes range"
+    return "Elevated — diabetes range"
 
 
 class PredictionRepository:
@@ -48,3 +58,14 @@ class PredictionRepository:
             .filter(PredictionRecord.prediction_id == prediction_id)
             .first()
         )
+
+    def update_hba1c(self, prediction_id: str, value: float) -> PredictionRecord | None:
+        record = self.get_by_prediction_id(prediction_id)
+        if record is None:
+            return None
+        record.hba1c_result = value
+        record.hba1c_comment = hba1c_comment(value)
+        record.hba1c_result_date = datetime.now(timezone.utc)
+        self.db.commit()
+        self.db.refresh(record)
+        return record

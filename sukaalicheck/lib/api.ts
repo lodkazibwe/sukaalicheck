@@ -323,6 +323,11 @@ export interface PredictPayload {
   physical_activity: "low" | "intermediate" | "high";
   diet_quality: number;
   blood_glucose?: number;
+  waist_circumference?: number;
+  cardiovascular_disease?: "yes" | "no";
+  pcos?: "yes" | "no";
+  gestational_diabetes?: "yes" | "no";
+  smoking?: "yes" | "no";
 }
 
 export interface PredictResult {
@@ -350,6 +355,14 @@ export interface RecordOut {
   risk_score: number;
   key_factors: string[];
   created_at: string;
+  waist_circumference?: number | null;
+  cardiovascular_disease?: "yes" | "no" | null;
+  pcos?: "yes" | "no" | null;
+  gestational_diabetes?: "yes" | "no" | null;
+  smoking?: "yes" | "no" | null;
+  hba1c_result?: number | null;
+  hba1c_comment?: string | null;
+  hba1c_result_date?: string | null;
 }
 
 export interface RecordsResponse {
@@ -374,6 +387,18 @@ export function getRecords(
 export function getRecord(token: string, predictionId: string): Promise<RecordOut> {
   return apiFetch(`/api/v1/predict/records/${predictionId}`, {
     headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export function saveHba1c(
+  token: string,
+  predictionId: string,
+  hba1cResult: number,
+): Promise<RecordOut> {
+  return apiFetch(`/api/v1/predict/records/${predictionId}/hba1c`, {
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ hba1c_result: hba1cResult }),
   });
 }
 

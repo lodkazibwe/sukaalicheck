@@ -12,13 +12,16 @@ import {
   Share2,
   AlertTriangle,
   Lightbulb,
+  ClipboardCheck,
+  Loader2,
 } from "lucide-react";
 
 import { type PredictionRecord, type RiskLevel } from "@/lib/mock";
-import { getRecord, type RecordOut } from "@/lib/api";
+import { getRecord, saveHba1c, type RecordOut } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { cn, patientId } from "@/lib/utils";
 
 function apiToLocal(r: RecordOut, id: string): PredictionRecord {
@@ -32,6 +35,9 @@ function apiToLocal(r: RecordOut, id: string): PredictionRecord {
     createdAt: r.created_at,
     keyFactors: r.key_factors,
     staffId: "",
+    hba1cResult: r.hba1c_result,
+    hba1cComment: r.hba1c_comment,
+    hba1cResultDate: r.hba1c_result_date,
   };
 }
 
@@ -98,6 +104,166 @@ const ADVICE: Record<RiskLevel, { heading: string; tips: string[] }> = {
     ],
   },
 };
+
+// ── HbA1c confirmatory result (high / intermediate only) ──────────────────────
+
+function Hba1cSection({
+  predictionId,
+  token,
+  colour,
+  initial,
+}: {
+  predictionId: string;
+  token: string | null;
+  colour: string;
+  initial: {
+    result?: number | null;
+    comment?: string | null;
+    date?: string | null;
+  };
+}) {
+  const [saved, setSaved] = useState(initial);
+  const [value, setValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  function requestSave() {
+    const num = Number(value);
+    if (!value || Number.isNaN(num)) {
+      toast.error("Enter a valid HbA1c value.");
+      return;
+    }
+    if (!token) {
+      toast.error("Session expired. Please sign in again.");
+      return;
+    }
+    setConfirming(true);
+  }
+
+  async function confirmSave() {
+    setConfirming(false);
+    setSaving(true);
+    try {
+      const updated = await saveHba1c(token!, predictionId, Number(value));
+      setSaved({
+        result: updated.hba1c_result,
+        comment: updated.hba1c_comment,
+        date: updated.hba1c_result_date,
+      });
+      setValue("");
+      toast.success("HbA1c result saved");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save HbA1c result");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      {/* Confirmatory testing recommendation */}
+      <div className="rounded-card border border-border bg-surface p-4 flex gap-3 print:break-inside-avoid">
+        <ClipboardCheck className="h-4 w-4 shrink-0 mt-0.5" style={{ color: colour }} />
+        <p className="text-sm text-foreground leading-relaxed">
+          <span className="font-bold">Confirmatory testing recommended.</span>{" "}
+          Refer the patient for a confirmatory HbA1c blood test, then record the result below.
+        </p>
+      </div>
+
+      {/* HbA1c result entry */}
+      <Card className="print:break-inside-avoid">
+        <CardContent className="pt-4 pb-4">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+            HbA1c result
+          </p>
+
+          {saved.result != null ? (
+            <div className="flex flex-col gap-1">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-extrabold text-foreground">
+                  {saved.result}%
+                </span>
+                {saved.comment && (
+                  <span
+                    className="rounded-full border px-2.5 py-0.5 text-xs font-semibold"
+                    style={{ color: colour, borderColor: `${colour}55` }}
+                  >
+                    {saved.comment}
+                  </span>
+                )}
+              </div>
+              {saved.date && (
+                <p className="text-xs text-muted-foreground">
+                  Recorded {formatDate(saved.date)}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 print:hidden">
+              <Input
+                type="number"
+                inputMode="decimal"
+                placeholder="e.g. 8.65"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+              />
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={requestSave}
+                disabled={saving}
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save HbA1c result"
+                )}
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Confirmation modal */}
+      {confirming && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 print:hidden">
+          <div className="w-full max-w-sm rounded-card border border-border bg-surface p-5 flex flex-col gap-4">
+            <div>
+              <p className="text-base font-bold text-foreground">Save HbA1c result?</p>
+              <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
+                Record an HbA1c result of{" "}
+                <span className="font-semibold text-foreground">{value}%</span> for this
+                patient? This will be saved to the record.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                onClick={() => setConfirming(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="lg"
+                className="flex-[2]"
+                onClick={confirmSave}
+              >
+                Confirm &amp; save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 // ── main component ────────────────────────────────────────────────────────────
 
@@ -263,6 +429,20 @@ export function ResultClient() {
             </ul>
           </CardContent>
         </Card>
+
+        {/* Confirmatory HbA1c (high / intermediate only) */}
+        {(record.riskLevel === "high" || record.riskLevel === "intermediate") && (
+          <Hba1cSection
+            predictionId={id}
+            token={token}
+            colour={colour}
+            initial={{
+              result: record.hba1cResult,
+              comment: record.hba1cComment,
+              date: record.hba1cResultDate,
+            }}
+          />
+        )}
 
         {/* Contributing factors */}
         {record.keyFactors && record.keyFactors.length > 0 && (

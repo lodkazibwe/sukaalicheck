@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from sukaali_check_backend.api.deps import get_current_facility, get_db
+from sukaali_check_backend.models.prediction_record import PredictionRecord
 from sukaali_check_backend.repositories.facility import FacilityRepository
 from sukaali_check_backend.repositories.prediction import PredictionRepository
 from sukaali_check_backend.schemas.predict import (
+    HbA1cUpdateRequest,
     PredictRequest,
     PredictResponse,
     RecordOut,
@@ -13,6 +15,29 @@ from sukaali_check_backend.schemas.predict import (
 from sukaali_check_backend.services import predict_service
 
 router = APIRouter()
+
+
+def _record_out(record: PredictionRecord) -> RecordOut:
+    return RecordOut(
+        prediction_id=record.prediction_id,
+        age=record.age,
+        sex=record.sex,
+        bmi=record.bmi,
+        risk_level=record.risk_level,
+        risk_score=record.risk_score,
+        key_factors=record.key_factors,
+        created_at=record.created_at.isoformat(),
+        waist_circumference=record.waist_circumference,
+        cardiovascular_disease=record.cardiovascular_disease,
+        pcos=record.pcos,
+        gestational_diabetes=record.gestational_diabetes,
+        smoking=record.smoking,
+        hba1c_result=record.hba1c_result,
+        hba1c_comment=record.hba1c_comment,
+        hba1c_result_date=(
+            record.hba1c_result_date.isoformat() if record.hba1c_result_date else None
+        ),
+    )
 
 
 @router.post("", response_model=PredictResponse)
@@ -30,22 +55,22 @@ def get_record(
     payload: dict = Depends(get_current_facility),
     db: Session = Depends(get_db),
 ) -> RecordOut:
-    facility = FacilityRepository(db).get_by_facility_id(payload["facility_id"])
-    if not facility:
+    record = _get_owned_record(prediction_id, payload, db)
+    return _record_out(record)
+
+
+@router.patch("/records/{prediction_id}/hba1c", response_model=RecordOut)
+def update_hba1c(
+    prediction_id: str,
+    data: HbA1cUpdateRequest,
+    payload: dict = Depends(get_current_facility),
+    db: Session = Depends(get_db),
+) -> RecordOut:
+    _get_owned_record(prediction_id, payload, db)
+    record = PredictionRepository(db).update_hba1c(prediction_id, data.hba1c_result)
+    if record is None:
         raise HTTPException(status_code=404, detail="Record not found")
-    record = PredictionRepository(db).get_by_prediction_id(prediction_id)
-    if not record or record.facility_id != facility.id:
-        raise HTTPException(status_code=404, detail="Record not found")
-    return RecordOut(
-        prediction_id=record.prediction_id,
-        age=record.age,
-        sex=record.sex,
-        bmi=record.bmi,
-        risk_level=record.risk_level,
-        risk_score=record.risk_score,
-        key_factors=record.key_factors,
-        created_at=record.created_at.isoformat(),
-    )
+    return _record_out(record)
 
 
 @router.get("/records", response_model=RecordsResponse)
@@ -62,19 +87,16 @@ def list_records(
     repo = PredictionRepository(db)
     rows = repo.list_by_facility(facility.id, risk=risk, limit=limit, offset=offset)
     total = repo.count_by_facility(facility.id, risk=risk)
-    return RecordsResponse(
-        records=[
-            RecordOut(
-                prediction_id=r.prediction_id,
-                age=r.age,
-                sex=r.sex,
-                bmi=r.bmi,
-                risk_level=r.risk_level,
-                risk_score=r.risk_score,
-                key_factors=r.key_factors,
-                created_at=r.created_at.isoformat(),
-            )
-            for r in rows
-        ],
-        total=total,
-    )
+    return RecordsResponse(records=[_record_out(r) for r in rows], total=total)
+
+
+def _get_owned_record(
+    prediction_id: str, payload: dict, db: Session
+) -> PredictionRecord:
+    facility = FacilityRepository(db).get_by_facility_id(payload["facility_id"])
+    if not facility:
+        raise HTTPException(status_code=404, detail="Record not found")
+    record = PredictionRepository(db).get_by_prediction_id(prediction_id)
+    if not record or record.facility_id != facility.id:
+        raise HTTPException(status_code=404, detail="Record not found")
+    return record

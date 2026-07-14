@@ -21,6 +21,9 @@ export interface PredictionRecord {
   createdAt: string;
   staffId: string;
   keyFactors?: string[];
+  hba1cResult?: number | null;
+  hba1cComment?: string | null;
+  hba1cResultDate?: string | null;
 }
 
 export const MOCK_STAFF: Staff = {

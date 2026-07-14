@@ -29,9 +29,9 @@ import { cn } from "@/lib/utils";
 
 const STEP_META = [
   { label: "Patient",   fields: ["age", "sex"] as const },
-  { label: "Body",      fields: ["weight", "height"] as const },
-  { label: "History",   fields: ["familyHistoryDiabetes", "hypertension"] as const },
-  { label: "Lifestyle", fields: ["physicalActivity", "dietQuality"] as const },
+  { label: "Body",      fields: ["weight", "height", "waistCircumference"] as const },
+  { label: "History",   fields: ["familyHistoryDiabetes", "hypertension", "cardiovascularDisease", "pcos", "gestationalDiabetes"] as const },
+  { label: "Lifestyle", fields: ["physicalActivity", "dietQuality", "smoking"] as const },
   { label: "Blood",     fields: ["bloodGlucose"] as const },
   { label: "Review",    fields: [] as const },
 ] as const;
@@ -279,6 +279,7 @@ export default function PredictPage() {
 
   const weight = form.watch("weight");
   const height = form.watch("height");
+  const sex = form.watch("sex");
   const computedBmi = useMemo(() => {
     if (weight && height && height > 0) {
       const b = bmi(weight, height);
@@ -324,6 +325,12 @@ export default function PredictPage() {
         physical_activity: data.physicalActivity,
         diet_quality: data.dietQuality,
         blood_glucose: data.bloodGlucose ?? undefined,
+        waist_circumference: data.waistCircumference ?? undefined,
+        cardiovascular_disease: data.cardiovascularDisease ?? undefined,
+        pcos: data.sex === "Female" ? data.pcos ?? undefined : undefined,
+        gestational_diabetes:
+          data.sex === "Female" ? data.gestationalDiabetes ?? undefined : undefined,
+        smoking: data.smoking ?? undefined,
       });
       const record = {
         id: apiResult.prediction_id,
@@ -536,6 +543,39 @@ export default function PredictPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Waist circumference */}
+                <FormField
+                  control={form.control}
+                  name="waistCircumference"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldLabel>Waist circumference (cm)</FieldLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          inputMode="decimal"
+                          placeholder="Optional — e.g. 94"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === "" ? undefined : Number(e.target.value)
+                            )
+                          }
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        {sex === "Male"
+                          ? "Healthy range: ≤ 102 cm (men)."
+                          : sex === "Female"
+                            ? "Healthy range: ≤ 89 cm (women)."
+                            : "Healthy range: ≤ 102 cm (men), ≤ 89 cm (women)."}
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </FieldCard>
             </>
           )}
@@ -581,6 +621,61 @@ export default function PredictPage() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="cardiovascularDisease"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldLabel>History of cardiovascular disease</FieldLabel>
+                      <FormControl>
+                        <YesNoToggle
+                          value={field.value as YesNo | undefined}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {sex === "Female" && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="pcos"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FieldLabel>Polycystic ovarian syndrome (PCOS)</FieldLabel>
+                          <FormControl>
+                            <YesNoToggle
+                              value={field.value as YesNo | undefined}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="gestationalDiabetes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FieldLabel>History of gestational diabetes</FieldLabel>
+                          <FormControl>
+                            <YesNoToggle
+                              value={field.value as YesNo | undefined}
+                              onChange={field.onChange}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
               </FieldCard>
             </>
           )}
@@ -640,6 +735,23 @@ export default function PredictPage() {
                         <span className="text-xs text-muted-foreground">Poor</span>
                         <span className="text-xs text-muted-foreground">Excellent</span>
                       </div>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="smoking"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldLabel>Smoking (tobacco or pipe)</FieldLabel>
+                      <FormControl>
+                        <YesNoToggle
+                          value={field.value as YesNo | undefined}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -731,6 +843,13 @@ export default function PredictPage() {
                     goStep: 2,
                   },
                   {
+                    label: "Waist circumference (cm)",
+                    value: values.waistCircumference
+                      ? `${values.waistCircumference} cm`
+                      : "Not entered",
+                    goStep: 2,
+                  },
+                  {
                     label: "Family history of diabetes",
                     value:
                       values.familyHistoryDiabetes === "yes"
@@ -751,6 +870,40 @@ export default function PredictPage() {
                     goStep: 3,
                   },
                   {
+                    label: "History of cardiovascular disease",
+                    value:
+                      values.cardiovascularDisease === "yes"
+                        ? "Yes"
+                        : values.cardiovascularDisease === "no"
+                          ? "No"
+                          : "Not entered",
+                    goStep: 3,
+                  },
+                  ...(values.sex === "Female"
+                    ? [
+                        {
+                          label: "Polycystic ovarian syndrome (PCOS)",
+                          value:
+                            values.pcos === "yes"
+                              ? "Yes"
+                              : values.pcos === "no"
+                                ? "No"
+                                : "Not entered",
+                          goStep: 3,
+                        },
+                        {
+                          label: "History of gestational diabetes",
+                          value:
+                            values.gestationalDiabetes === "yes"
+                              ? "Yes"
+                              : values.gestationalDiabetes === "no"
+                                ? "No"
+                                : "Not entered",
+                          goStep: 3,
+                        },
+                      ]
+                    : []),
+                  {
                     label: "Physical activity level",
                     value: values.physicalActivity
                       ? values.physicalActivity.charAt(0).toUpperCase() +
@@ -761,6 +914,16 @@ export default function PredictPage() {
                   {
                     label: "Diet quality",
                     value: values.dietQuality ? `${values.dietQuality} / 10` : "—",
+                    goStep: 4,
+                  },
+                  {
+                    label: "Smoking",
+                    value:
+                      values.smoking === "yes"
+                        ? "Yes"
+                        : values.smoking === "no"
+                          ? "No"
+                          : "Not entered",
                     goStep: 4,
                   },
                   {

@@ -32,6 +32,18 @@ class PredictionRecord(Base):
     diet_quality: Mapped[int] = mapped_column(Integer, nullable=False)
     blood_glucose: Mapped[float | None] = mapped_column(Float, nullable=True)
 
+    # Additional clinical intake (data-only, not used in prediction)
+    waist_circumference: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cardiovascular_disease: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    pcos: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    gestational_diabetes: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    smoking: Mapped[str | None] = mapped_column(String(3), nullable=True)
+
+    # Confirmatory HbA1c result (entered after a referral)
+    hba1c_result: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hba1c_comment: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    hba1c_result_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
     # Prediction result
     risk_level: Mapped[str] = mapped_column(String(15), nullable=False)
     risk_score: Mapped[int] = mapped_column(Integer, nullable=False)

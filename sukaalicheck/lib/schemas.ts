@@ -25,14 +25,23 @@ export const predictionSchema = z.object({
     .number({ error: "Enter a valid height" })
     .positive("Enter a valid height")
     .max(220, "Max 220 cm"),
+  waistCircumference: z
+    .number({ error: "Enter a valid number" })
+    .positive("Enter a valid number")
+    .max(300, "Max 300 cm")
+    .optional(),
 
   // Step 3 — History
   familyHistoryDiabetes: z.enum(["yes", "no"] as const, "Required"),
   hypertension: z.enum(["yes", "no"] as const, "Required"),
+  cardiovascularDisease: z.enum(["yes", "no"] as const).optional(),
+  pcos: z.enum(["yes", "no"] as const).optional(),
+  gestationalDiabetes: z.enum(["yes", "no"] as const).optional(),
 
   // Step 4 — Lifestyle
   physicalActivity: z.enum(["low", "intermediate", "high"] as const, "Required"),
   dietQuality: z.number().int().min(1).max(10),
+  smoking: z.enum(["yes", "no"] as const).optional(),
 
   // Step 5 — Blood
   bloodGlucose: z

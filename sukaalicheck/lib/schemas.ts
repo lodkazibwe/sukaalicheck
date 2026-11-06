@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { GLUCOSE_RANGE, GLUCOSE_UNITS, looksLikeOtherUnit, otherUnit } from "@/lib/glucose";
+
 export const loginSchema = z.object({
   facilityId: z.string().min(1, "Enter your facility ID"),
   password: z.string().min(1, "Enter your password or activation code"),
@@ -38,17 +40,25 @@ export const predictionSchema = z.object({
   pcos: z.enum(["yes", "no"] as const).optional(),
   gestationalDiabetes: z.enum(["yes", "no"] as const).optional(),
 
-  // Step 4 — Lifestyle
-  physicalActivity: z.enum(["low", "intermediate", "high"] as const, "Required"),
-  dietQuality: z.number().int().min(1).max(10),
+  // Step 4 — Lifestyle (data-only, not used by the risk model)
+  physicalActivity: z.enum(["low", "intermediate", "high"] as const).optional(),
+  dietQuality: z.number().int().min(1).max(10).optional(),
   smoking: z.enum(["yes", "no"] as const).optional(),
 
-  // Step 5 — Blood
-  bloodGlucose: z
-    .number({ error: "Enter a valid number" })
-    .min(0)
-    .max(2000)
-    .optional(),
+  // Step 5 — Blood (fasting glucose, in the glucometer's unit — required by the risk model)
+  bloodGlucose: z.number({ error: "Enter the fasting glucose reading" }),
+  bloodGlucoseUnit: z.enum(GLUCOSE_UNITS),
+}).superRefine((data, ctx) => {
+  const { bloodGlucose: value, bloodGlucoseUnit: unit } = data;
+  const { min, max } = GLUCOSE_RANGE[unit];
+  if (value >= min && value <= max) return;
+  ctx.addIssue({
+    code: "custom",
+    path: ["bloodGlucose"],
+    message: looksLikeOtherUnit(value, unit)
+      ? `That looks like ${otherUnit(unit)} — switch the unit to ${otherUnit(unit)}`
+      : `Enter a value between ${min} and ${max} ${unit}`,
+  });
 });
 
 export type PredictionInput = z.infer<typeof predictionSchema>;

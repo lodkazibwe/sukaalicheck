@@ -1,3 +1,4 @@
+import type { GlucoseUnit } from "@/lib/glucose";
 import type { Staff } from "@/lib/mock";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
@@ -320,9 +321,10 @@ export interface PredictPayload {
   height_cm: number;
   family_history_diabetes: "yes" | "no";
   hypertension: "yes" | "no";
-  physical_activity: "low" | "intermediate" | "high";
-  diet_quality: number;
-  blood_glucose?: number;
+  blood_glucose: number;
+  blood_glucose_unit: GlucoseUnit;
+  physical_activity?: "low" | "intermediate" | "high";
+  diet_quality?: number;
   waist_circumference?: number;
   cardiovascular_disease?: "yes" | "no";
   pcos?: "yes" | "no";
@@ -355,6 +357,9 @@ export interface RecordOut {
   risk_score: number;
   key_factors: string[];
   created_at: string;
+  blood_glucose?: number | null;
+  blood_glucose_entered?: number | null;
+  blood_glucose_unit?: GlucoseUnit | null;
   waist_circumference?: number | null;
   cardiovascular_disease?: "yes" | "no" | null;
   pcos?: "yes" | "no" | null;

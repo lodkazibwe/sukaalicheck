@@ -21,6 +21,8 @@ export interface PredictionRecord {
   createdAt: string;
   staffId: string;
   keyFactors?: string[];
+  /** Fasting glucose as entered, e.g. "5.5 mmol/L (99 mg/dL)" */
+  glucose?: string | null;
   hba1cResult?: number | null;
   hba1cComment?: string | null;
   hba1cResultDate?: string | null;

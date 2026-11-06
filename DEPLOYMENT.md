@@ -229,6 +229,13 @@ jobs:
           build-args: |
             NEXT_PUBLIC_API_BASE=${{ secrets.NEXT_PUBLIC_API_BASE }}
 
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./sukaali-check-backend
+          push: true
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/sukaalicheck-backend:latest
+
       - name: Deploy to droplet via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -236,9 +243,13 @@ jobs:
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
+            set -e
             cd /opt/sukaalicheck
-            docker-compose pull frontend
-            docker-compose up -d frontend
+            docker-compose pull frontend backend
+            # Migrate with the new image before swapping containers. If this fails the
+            # deploy stops here and the old containers keep serving.
+            docker-compose run --rm backend uv run alembic upgrade head
+            docker-compose up -d frontend backend
             docker image prune -f
 ```
 
@@ -350,8 +361,31 @@ After the cert is issued, uncomment the HTTPS block in `nginx.conf`, rebuild the
 1. Make changes locally, commit, push to `main`
 2. GitHub Actions builds the Docker image with production env vars baked in
 3. Pushes image to Docker Hub
-4. SSHs into the droplet and pulls + restarts the frontend container
-5. Backend is not redeployed unless you push a backend image too (add a second job to the workflow when the backend is ready)
+4. SSHs into the droplet, pulls both images, runs database migrations, then restarts the containers
+5. If the migration fails, the deploy stops before restarting — the old containers keep serving
+
+---
+
+## Database Migrations
+
+Every deploy runs `alembic upgrade head` with the **new** backend image before the containers are
+swapped (`docker-compose run --rm backend uv run alembic upgrade head`). Write migrations so the
+*old* backend still works against the migrated schema while it is running (e.g. give new NOT NULL
+columns a server default).
+
+Check or run migrations by hand on the droplet:
+
+```bash
+cd /opt/sukaalicheck
+docker-compose run --rm backend uv run alembic current        # revision the DB is at
+docker-compose run --rm backend uv run alembic upgrade head   # apply pending migrations
+```
+
+**One-time check before the first automated deploy.** If `alembic current` prints no revision, the
+database was created by the app's `create_all` and never stamped, so `upgrade head` would try to
+re-create existing tables and the deploy would stop. Compare the schema with the migrations in
+`sukaali-check-backend/alembic/versions/`, apply any missing columns, then stamp the revision the
+schema matches, e.g. `docker-compose run --rm backend uv run alembic stamp <revision>`.
 
 ---
 

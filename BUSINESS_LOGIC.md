@@ -251,17 +251,21 @@ runs the scikit-learn model, derives a 0–100 score, computes human-readable co
 and persists the record:
 
 ```python
-features = np.array([[data.age, round(bmi, 2), _PHYSICAL_ACTIVITY[data.physical_activity],
-                      _YES_NO[data.family_history_diabetes], _YES_NO[data.hypertension],
-                      _SEX[data.sex], data.blood_glucose or 0.0, data.diet_quality]])
+features = build_features(data, bmi)   # ordered by feature_columnsSC.pkl:
+# age, sex, bmi, family_history_diabetes, hypertension, blood_glucose (fasting, mg/dL —
+# entered in mmol/L or mg/dL; data.blood_glucose_mg_dl converts ×18)
 predicted_class = int(model.predict(features)[0])
 probabilities = model.predict_proba(features)[0]     # [P(low), P(inter), P(high)]
 risk_level = _CLASS_LABELS.get(predicted_class, "low")
 risk_score = max(0, min(100, round(probabilities[1]*50 + probabilities[2]*100)))
 ```
 
-The model (`…/ml/OptimizedRFmodel.pkl`, a Random Forest) is loaded once at startup —
-`…/core/model.py::init_model` is called from the app lifespan in `…/app.py`. Records are written via
+The model (`…/ml/SukaaliCheckV2.pkl`, a Random Forest; training notebook in
+`sukaali-check-backend/notebooks/SukaaliCheck2.ipynb`) is loaded once at startup —
+`…/core/model.py::init_model` is called from the app lifespan in `…/app.py`, and refuses to start if
+the model's feature names don't match `…/ml/feature_columnsSC.pkl`. Physical activity and diet
+quality are still collected but are data-only. Each record stores `model_version` (`v1` = the
+earlier 8-input model, `v2` = current). Records are written via
 `…/repositories/prediction.py` into `…/models/prediction_record.py`.
 
 **Result & PDF** — `sukaalicheck/app/(app)/predict/result/[id]/result-client.tsx` shows the risk

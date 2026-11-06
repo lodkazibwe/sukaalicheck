@@ -28,11 +28,16 @@ class PredictionRecord(Base):
     bmi: Mapped[float] = mapped_column(Float, nullable=False)
     family_history_diabetes: Mapped[str] = mapped_column(String(3), nullable=False)
     hypertension: Mapped[str] = mapped_column(String(3), nullable=False)
-    physical_activity: Mapped[str] = mapped_column(String(20), nullable=False)
-    diet_quality: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Model input in mg/dL. Nullable for records created before glucose became required (v1 model)
     blood_glucose: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # The reading as typed by the health worker, in their glucometer's unit ("mg/dL" / "mmol/L")
+    blood_glucose_entered: Mapped[float | None] = mapped_column(Float, nullable=True)
+    blood_glucose_unit: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
-    # Additional clinical intake (data-only, not used in prediction)
+    # Additional clinical intake (data-only, not used in prediction).
+    # physical_activity / diet_quality were model inputs in v1.
+    physical_activity: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    diet_quality: Mapped[int | None] = mapped_column(Integer, nullable=True)
     waist_circumference: Mapped[float | None] = mapped_column(Float, nullable=True)
     cardiovascular_disease: Mapped[str | None] = mapped_column(String(3), nullable=True)
     pcos: Mapped[str | None] = mapped_column(String(3), nullable=True)
@@ -48,6 +53,7 @@ class PredictionRecord(Base):
     risk_level: Mapped[str] = mapped_column(String(15), nullable=False)
     risk_score: Mapped[int] = mapped_column(Integer, nullable=False)
     key_factors: Mapped[list] = mapped_column(JSON, nullable=False)
+    model_version: Mapped[str] = mapped_column(String(20), nullable=False, server_default="v1")
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.now(), nullable=False

@@ -49,8 +49,8 @@ function scoreInput(data: PredictionInput): {
   }
 
   // Diet quality (1–10; low diet = risk factor)
-  if (data.dietQuality <= 3) { score += 8; factors.push("Poor diet quality"); }
-  else if (data.dietQuality >= 8) { score = Math.max(0, score - 5); }
+  if (data.dietQuality !== undefined && data.dietQuality <= 3) { score += 8; factors.push("Poor diet quality"); }
+  else if (data.dietQuality !== undefined && data.dietQuality >= 8) { score = Math.max(0, score - 5); }
 
   // Blood glucose
   if (data.bloodGlucose !== undefined) {

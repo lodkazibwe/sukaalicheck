@@ -159,6 +159,17 @@ export default function LoginPage() {
         <a href="mailto:sukaalicheckug@gmail.com" className="text-sm text-primary font-medium">
           Contact us at sukaalicheckug@gmail.com
         </a>
+        <p className="mt-4 text-xs text-muted-foreground">
+          SukaaliCheck is a product of{" "}
+          <a
+            href="https://sukaaliknow.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary"
+          >
+            SukaaliKnow Limited
+          </a>
+        </p>
       </div>
     </div>
   );

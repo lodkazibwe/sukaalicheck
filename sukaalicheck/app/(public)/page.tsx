@@ -223,6 +223,17 @@ export default function LandingPage() {
           <Link href="/signup">Sign up your facility</Link>
         </Button>
         <div className="text-center">
+          <p className="text-xs text-muted-foreground">
+            SukaaliCheck is a product of{" "}
+            <a
+              href="https://sukaaliknow.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-primary"
+            >
+              SukaaliKnow Limited
+            </a>
+          </p>
           <p className="text-xs text-muted-foreground">© 2026 SukaaliCheck</p>
           <p className="text-xs text-muted-foreground">Made in Kampala, Uganda</p>
         </div>

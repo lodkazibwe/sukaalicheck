@@ -9,6 +9,14 @@ import { ChevronLeft, Check, Loader2, Lock } from "lucide-react";
 
 import { predictionSchema, type PredictionInput } from "@/lib/schemas";
 import { bmi, bmiCategory } from "@/lib/risk-engine";
+import {
+  DEFAULT_GLUCOSE_UNIT,
+  GLUCOSE_RANGE,
+  GLUCOSE_UNITS,
+  convertGlucose,
+  formatGlucose,
+  otherUnit,
+} from "@/lib/glucose";
 import { predict } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth";
 import { MOCK_STAFF, daysUntil } from "@/lib/mock";
@@ -32,7 +40,7 @@ const STEP_META = [
   { label: "Body",      fields: ["weight", "height", "waistCircumference"] as const },
   { label: "History",   fields: ["familyHistoryDiabetes", "hypertension", "cardiovascularDisease", "pcos", "gestationalDiabetes"] as const },
   { label: "Lifestyle", fields: ["physicalActivity", "dietQuality", "smoking"] as const },
-  { label: "Blood",     fields: ["bloodGlucose"] as const },
+  { label: "Blood",     fields: ["bloodGlucose", "bloodGlucoseUnit"] as const },
   { label: "Review",    fields: [] as const },
 ] as const;
 
@@ -273,13 +281,19 @@ export default function PredictPage() {
   const form = useForm<PredictionInput>({
     resolver: zodResolver(predictionSchema),
     defaultValues: {
-      dietQuality: 5,
+      bloodGlucoseUnit: DEFAULT_GLUCOSE_UNIT,
     },
   });
 
   const weight = form.watch("weight");
   const height = form.watch("height");
   const sex = form.watch("sex");
+  const glucose = form.watch("bloodGlucose");
+  const glucoseUnit = form.watch("bloodGlucoseUnit") ?? DEFAULT_GLUCOSE_UNIT;
+  const glucoseInRange =
+    glucose !== undefined &&
+    glucose >= GLUCOSE_RANGE[glucoseUnit].min &&
+    glucose <= GLUCOSE_RANGE[glucoseUnit].max;
   const computedBmi = useMemo(() => {
     if (weight && height && height > 0) {
       const b = bmi(weight, height);
@@ -322,9 +336,10 @@ export default function PredictPage() {
         height_cm: data.height,
         family_history_diabetes: data.familyHistoryDiabetes,
         hypertension: data.hypertension,
-        physical_activity: data.physicalActivity,
-        diet_quality: data.dietQuality,
-        blood_glucose: data.bloodGlucose ?? undefined,
+        blood_glucose: data.bloodGlucose,
+        blood_glucose_unit: data.bloodGlucoseUnit,
+        physical_activity: data.physicalActivity ?? undefined,
+        diet_quality: data.dietQuality ?? undefined,
         waist_circumference: data.waistCircumference ?? undefined,
         cardiovascular_disease: data.cardiovascularDisease ?? undefined,
         pcos: data.sex === "Female" ? data.pcos ?? undefined : undefined,
@@ -341,6 +356,7 @@ export default function PredictPage() {
         riskScore: apiResult.risk_score,
         createdAt: apiResult.created_at,
         keyFactors: apiResult.key_factors,
+        glucose: formatGlucose(data.bloodGlucose, data.bloodGlucoseUnit),
       };
       sessionStorage.setItem(`pred_${record.id}`, JSON.stringify(record));
       router.push(`/predict/result/${record.id}`);
@@ -685,7 +701,7 @@ export default function PredictPage() {
             <>
               <StepTitle
                 title="Lifestyle"
-                subtitle="Daily activity level and diet quality."
+                subtitle="Optional. Saved with the record — not used in the risk score."
               />
               <FieldCard>
                 <FormField
@@ -717,8 +733,13 @@ export default function PredictPage() {
                     <FormItem>
                       <div className="flex items-center justify-between">
                         <FieldLabel>Diet quality</FieldLabel>
-                        <span className="text-sm font-semibold text-primary">
-                          {field.value} / 10
+                        <span
+                          className={cn(
+                            "text-sm font-semibold",
+                            field.value ? "text-primary" : "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? `${field.value} / 10` : "Not entered"}
                         </span>
                       </div>
                       <FormControl>
@@ -763,21 +784,44 @@ export default function PredictPage() {
           {step === 5 && (
             <>
               <StepTitle
-                title="Blood glucose test"
-                subtitle="Use the most recent random glucose reading."
+                title="Fasting blood glucose"
+                subtitle="The patient should not have eaten for at least 8 hours before the test."
               />
               <FieldCard>
+                <FormField
+                  control={form.control}
+                  name="bloodGlucoseUnit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FieldLabel>Unit shown on the glucometer</FieldLabel>
+                      <FormControl>
+                        <SegmentedControl
+                          options={GLUCOSE_UNITS.map((u) => ({ label: u, value: u }))}
+                          value={field.value}
+                          onChange={(u) => {
+                            field.onChange(u);
+                            // Re-check an entered reading against the new unit
+                            if (form.getValues("bloodGlucose") !== undefined) {
+                              void form.trigger("bloodGlucose");
+                            }
+                          }}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="bloodGlucose"
                   render={({ field }) => (
                     <FormItem>
-                      <FieldLabel>Random blood glucose (mg/dL)</FieldLabel>
+                      <FieldLabel>Fasting blood glucose ({glucoseUnit})</FieldLabel>
                       <FormControl>
                         <Input
                           type="number"
                           inputMode="decimal"
-                          placeholder="e.g. 140"
+                          placeholder={glucoseUnit === "mmol/L" ? "e.g. 5.5" : "e.g. 99"}
                           {...field}
                           onChange={(e) =>
                             field.onChange(
@@ -787,6 +831,11 @@ export default function PredictPage() {
                           value={field.value ?? ""}
                         />
                       </FormControl>
+                      {glucoseInRange && (
+                        <p className="text-xs text-muted-foreground">
+                          = {convertGlucose(glucose, glucoseUnit)} {otherUnit(glucoseUnit)}
+                        </p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}
@@ -795,14 +844,19 @@ export default function PredictPage() {
                 {/* Reference ranges */}
                 <div className="rounded-input bg-muted px-4 py-3 flex flex-col gap-1.5">
                   <p className="text-xs font-bold text-foreground">
-                    Reference ranges (random)
+                    Reference ranges (fasting)
                   </p>
                   {[
-                    ["≤ 200 mg/dL", "Normal"],
-                    ["> 200 mg/dL", "Possible diabetes — confirm with fasting test"],
-                  ].map(([range, label]) => (
-                    <p key={range} className="text-xs text-muted-foreground">
-                      {range} — {label}
+                    { mmol: "< 5.6 mmol/L", mg: "< 100 mg/dL", label: "Normal" },
+                    { mmol: "5.6–6.9 mmol/L", mg: "100–125 mg/dL", label: "Prediabetes range" },
+                    {
+                      mmol: "≥ 7.0 mmol/L",
+                      mg: "≥ 126 mg/dL",
+                      label: "Diabetes range — confirm with HbA1c",
+                    },
+                  ].map(({ mmol, mg, label }) => (
+                    <p key={label} className="text-xs text-muted-foreground">
+                      {glucoseUnit === "mmol/L" ? `${mmol} (${mg})` : `${mg} (${mmol})`} — {label}
                     </p>
                   ))}
                 </div>
@@ -908,12 +962,12 @@ export default function PredictPage() {
                     value: values.physicalActivity
                       ? values.physicalActivity.charAt(0).toUpperCase() +
                         values.physicalActivity.slice(1)
-                      : "—",
+                      : "Not entered",
                     goStep: 4,
                   },
                   {
                     label: "Diet quality",
-                    value: values.dietQuality ? `${values.dietQuality} / 10` : "—",
+                    value: values.dietQuality ? `${values.dietQuality} / 10` : "Not entered",
                     goStep: 4,
                   },
                   {
@@ -927,8 +981,11 @@ export default function PredictPage() {
                     goStep: 4,
                   },
                   {
-                    label: "Blood glucose (mg/dL)",
-                    value: values.bloodGlucose ? `${values.bloodGlucose} mg/dL` : "Not entered",
+                    label: "Fasting blood glucose",
+                    value:
+                      values.bloodGlucose !== undefined
+                        ? formatGlucose(values.bloodGlucose, values.bloodGlucoseUnit)
+                        : "—",
                     goStep: 5,
                   },
                 ].map(({ label, value, goStep }) => (

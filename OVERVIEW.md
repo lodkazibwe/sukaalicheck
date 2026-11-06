@@ -135,7 +135,8 @@ core/
   email.py            # Resend email wrappers (OTP, rejection, admin notification)
   model.py            # ML model load/access (joblib)
   exceptions.py       # DomainError hierarchy (NotFound/Conflict/Auth/Forbidden/Validation/…)
-ml/OptimizedRFmodel.pkl   # trained Random Forest model
+ml/SukaaliCheckV2.pkl # trained Random Forest model (+ feature_columnsSC.pkl)
+notebooks/            # training notebook for the model (SukaaliCheck2.ipynb)
 alembic/              # database migrations
 scripts/provision_momo_sandbox.py   # one-time MoMo sandbox credential helper
 ```

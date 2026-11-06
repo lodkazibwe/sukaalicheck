@@ -40,7 +40,11 @@ jobs:
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
+            set -e
             cd /opt/sukaalicheck
             docker-compose pull frontend backend
+            # Migrate with the new image before swapping containers. If this fails the
+            # deploy stops here and the old containers keep serving.
+            docker-compose run --rm backend uv run alembic upgrade head
             docker-compose up -d frontend backend
             docker image prune -f
